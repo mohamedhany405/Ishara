@@ -1,0 +1,165 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../features/shell/presentation/ishara_shell_scaffold.dart';
+import '../../features/communicate/presentation/communicate_screen.dart';
+import '../../features/vision/presentation/vision_screen.dart';
+import '../../features/safety/presentation/safety_screen.dart';
+import '../../features/learning/presentation/learning_screen.dart';
+import '../../features/profile/presentation/profile_screen.dart';
+import '../../features/hardware_pairing/presentation/hardware_pairing_screen.dart';
+import '../../features/auth/presentation/login_screen.dart';
+import '../../features/auth/presentation/register_screen.dart';
+import '../../features/auth/presentation/otp_screen.dart';
+import '../../features/auth/presentation/splash_screen.dart';
+import '../api/auth_provider.dart';
+
+/// Route path constants
+abstract class AppRoute {
+  static const root = '/';
+  static const login = '/login';
+  static const register = '/register';
+  static const otp = '/otp';
+
+  static const home = '/home';
+  static const vision = '/vision';
+  static const safety = '/safety';
+  static const learning = '/learning';
+  static const profile = '/profile';
+  static const sos = '/sos';
+  static const hardwarePairing = '/hardware-pairing';
+}
+
+/// Root navigator key – shared so modals can push above the shell.
+final rootNavigatorKey = GlobalKey<NavigatorState>();
+
+/// A [ChangeNotifier] driven by a provider [Ref].
+/// Using [Ref.listen] (not WidgetRef.listen) avoids the
+/// "ref.listen can only be used within build" assertion.
+class _AuthRefreshNotifier extends ChangeNotifier {
+  _AuthRefreshNotifier(Ref ref) {
+    ref.listen<AuthState>(authProvider, (_, __) {
+      notifyListeners();
+    });
+  }
+}
+
+/// Riverpod provider for the application [GoRouter].
+/// Because this uses [Ref.listen] internally, auth changes automatically
+/// trigger GoRouter's redirect logic without any WidgetRef dependency.
+final goRouterProvider = Provider<GoRouter>((ref) {
+  final refreshNotifier = _AuthRefreshNotifier(ref);
+
+  return GoRouter(
+    navigatorKey: rootNavigatorKey,
+    initialLocation: AppRoute.root,
+    refreshListenable: refreshNotifier,
+    redirect: (context, state) {
+      final auth = ref.read(authProvider);
+      final loc = state.matchedLocation;
+
+      // Let splash through always
+      if (loc == AppRoute.root) return null;
+
+      final onAuth =
+          loc == AppRoute.login ||
+          loc == AppRoute.register ||
+          loc == AppRoute.otp;
+
+      // Still initializing — let GoRouter decide next time
+      if (auth.status == AuthStatus.unknown) return null;
+
+      // Logged-in or guest → skip auth pages
+      if (auth.canUseApp && onAuth) return AppRoute.home;
+
+      // Not authenticated and not on an auth page → force to login
+      if (!auth.canUseApp && !onAuth) return AppRoute.login;
+
+      return null;
+    },
+    routes: [
+      // ── Splash ───────────────────────────────────────────────────────
+      GoRoute(
+        path: AppRoute.root,
+        name: 'splash',
+        pageBuilder: (_, __) => const NoTransitionPage(child: SplashScreen()),
+      ),
+
+      // ── Auth (no shell) ─────────────────────────────────────────────────
+      GoRoute(
+        path: AppRoute.login,
+        name: 'login',
+        pageBuilder: (_, __) => const NoTransitionPage(child: LoginScreen()),
+      ),
+      GoRoute(
+        path: AppRoute.register,
+        name: 'register',
+        pageBuilder: (_, __) => const MaterialPage(child: RegisterScreen()),
+      ),
+      GoRoute(
+        path: AppRoute.otp,
+        name: 'otp',
+        pageBuilder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          final email = extra['email'] as String? ?? '';
+          return MaterialPage(child: OtpScreen(email: email));
+        },
+      ),
+
+      // ── App shell ───────────────────────────────────────────────────────
+      ShellRoute(
+        builder: (context, state, child) => IsharaShellScaffold(child: child),
+        routes: [
+          GoRoute(
+            path: AppRoute.home,
+            name: 'home',
+            pageBuilder:
+                (_, __) => const NoTransitionPage(child: CommunicateScreen()),
+          ),
+          GoRoute(
+            path: AppRoute.vision,
+            name: 'vision',
+            pageBuilder:
+                (_, __) => const NoTransitionPage(child: VisionScreen()),
+          ),
+          GoRoute(
+            path: AppRoute.safety,
+            name: 'safety',
+            pageBuilder:
+                (_, __) => const NoTransitionPage(child: SafetyScreen()),
+          ),
+          GoRoute(
+            path: AppRoute.learning,
+            name: 'learning',
+            pageBuilder:
+                (_, __) => const NoTransitionPage(child: LearningScreen()),
+          ),
+          GoRoute(
+            path: AppRoute.profile,
+            name: 'profile',
+            pageBuilder:
+                (_, __) => const NoTransitionPage(child: ProfileScreen()),
+          ),
+        ],
+      ),
+
+      // ── Modals (no shell) ───────────────────────────────────────────────
+      GoRoute(
+        path: AppRoute.sos,
+        name: 'sos',
+        pageBuilder:
+            (_, __) => const MaterialPage(
+              fullscreenDialog: true,
+              child: SafetyScreen(initialTab: SafetyInitialTab.sos),
+            ),
+      ),
+      GoRoute(
+        path: AppRoute.hardwarePairing,
+        name: 'hardware-pairing',
+        pageBuilder:
+            (_, __) => const MaterialPage(child: HardwarePairingScreen()),
+      ),
+    ],
+  );
+});
