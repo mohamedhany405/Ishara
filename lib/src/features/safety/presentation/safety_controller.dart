@@ -6,7 +6,6 @@ import 'package:vibration/vibration.dart';
 
 import '../../../core/hardware/glasses_provider.dart';
 import '../../../core/hardware/hardware_connection_service.dart';
-import '../data/emergency_contact_service.dart';
 
 enum SafetyTab { dashboard, sos }
 
@@ -35,7 +34,6 @@ class SafetyState {
     required this.lastSosLocation,
     required this.error,
     required this.glassesConnected,
-    required this.triggeredByGlasses,
   });
 
   final SafetyTab currentTab;
@@ -45,7 +43,6 @@ class SafetyState {
   final Position? lastSosLocation;
   final String? error;
   final bool glassesConnected;
-  final bool triggeredByGlasses;
 
   SafetyState copyWith({
     SafetyTab? currentTab,
@@ -55,7 +52,6 @@ class SafetyState {
     Position? lastSosLocation,
     String? error,
     bool? glassesConnected,
-    bool? triggeredByGlasses,
   }) {
     return SafetyState(
       currentTab: currentTab ?? this.currentTab,
@@ -65,7 +61,6 @@ class SafetyState {
       lastSosLocation: lastSosLocation ?? this.lastSosLocation,
       error: error,
       glassesConnected: glassesConnected ?? this.glassesConnected,
-      triggeredByGlasses: triggeredByGlasses ?? this.triggeredByGlasses,
     );
   }
 
@@ -77,16 +72,15 @@ class SafetyState {
         lastSosLocation: null,
         error: null,
         glassesConnected: false,
-        triggeredByGlasses: false,
       );
 }
 
 class SafetyController extends StateNotifier<SafetyState> {
-  SafetyController([this._hardwareService]) : super(SafetyState.initial) {
+  SafetyController(this._hardwareService) : super(SafetyState.initial) {
     _init();
   }
 
-  final HardwareConnectionService? _hardwareService;
+  final HardwareConnectionService _hardwareService;
 
   static const int _sosCountdownDefault = 5;
   Timer? _obstacleTimer;
@@ -96,11 +90,8 @@ class SafetyController extends StateNotifier<SafetyState> {
   StreamSubscription? _connectionSub;
 
   void _init() {
-    final hw = _hardwareService;
-    if (hw == null) return; // Tests / headless mode: skip hardware listeners
-
     // Listen for glasses connection changes
-    _connectionSub = hw.stateStream.listen((hwState) {
+    _connectionSub = _hardwareService.stateStream.listen((hwState) {
       final connected = hwState == HardwareConnectionState.connected;
       state = state.copyWith(glassesConnected: connected);
 
@@ -120,7 +111,7 @@ class SafetyController extends StateNotifier<SafetyState> {
     });
 
     // Check if already connected
-    if (hw.state == HardwareConnectionState.connected) {
+    if (_hardwareService.state == HardwareConnectionState.connected) {
       state = state.copyWith(glassesConnected: true);
       _startGlassesSensors();
     } else {
@@ -133,11 +124,8 @@ class SafetyController extends StateNotifier<SafetyState> {
   }
 
   void _startGlassesSensors() {
-    final hw = _hardwareService;
-    if (hw == null) return;
-
     // Listen for sensor readings from glasses
-    _sensorSub = hw.sensorStream.listen((data) {
+    _sensorSub = _hardwareService.sensorStream.listen((data) {
       final distanceCm = data.payload?['distance_cm'] as int?;
       if (distanceCm != null && state.currentTab == SafetyTab.dashboard) {
         state = state.copyWith(
@@ -150,12 +138,11 @@ class SafetyController extends StateNotifier<SafetyState> {
     });
 
     // Listen for SOS events from glasses button
-    _eventSub = hw.eventStream.listen((data) {
+    _eventSub = _hardwareService.eventStream.listen((data) {
       final eventType = data.payload?['event'] as String?;
       if (eventType == 'sos') {
         // Auto-trigger SOS from glasses button press
         if (state.sosPhase == SosPhase.idle) {
-          state = state.copyWith(triggeredByGlasses: true);
           armSos();
           startSosCountdown();
         }
@@ -225,14 +212,6 @@ class SafetyController extends StateNotifier<SafetyState> {
       if (await Vibration.hasVibrator() == true) {
         Vibration.vibrate(pattern: [0, 200, 100, 200]);
       }
-      // Send SOS message via WhatsApp / Telegram if contact saved
-      final contact = await EmergencyContact.load();
-      if (contact != null && contact.isValid) {
-        EmergencyContactService.sendSosMessage(
-          contact: contact,
-          position: pos,
-        );
-      }
     } catch (e) {
       state = state.copyWith(
         sosPhase: SosPhase.idle,
@@ -261,7 +240,6 @@ class SafetyController extends StateNotifier<SafetyState> {
       sosPhase: SosPhase.idle,
       sosCountdownSeconds: _sosCountdownDefault,
       error: null,
-      triggeredByGlasses: false,
     );
   }
 
