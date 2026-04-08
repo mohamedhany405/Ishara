@@ -62,11 +62,16 @@ class AppStrings {
   final String analysing;
   final String recognizedText;
   final String currencyTotal;
+  final String currencyBreakdownLabel;
   final String objectsMode;
   final String objectsModeDesc;
+  final String detectedObjects;
+  final String noObjectsFound;
   final String currency;
   final String readText;
   final String objects;
+  final String copied;
+  final String copyText;
 
   // ── Safety screen ──────────────────────────────────────────────────────────
   final String safetyTitle;
@@ -107,6 +112,12 @@ class AppStrings {
   final String beginner;
   final String daily;
   final String emergency;
+  final String wordDetail;
+  final String lessonDetail;
+  final String watchSign;
+  final String close;
+  final String meaning;
+  final String signVideo;
 
   // ── Profile screen ─────────────────────────────────────────────────────────
   final String profileTitle;
@@ -209,6 +220,19 @@ class AppStrings {
   final String connectionSuccess;
   final String connectionFailed;
 
+  // ── Emergency contact (Safety page) ───────────────────────────────────────
+  final String emergencyContact;
+  final String addContact;
+  final String editContact;
+  final String deleteContact;
+  final String contactName;
+  final String phoneNumber;
+  final String sendVia;
+  final String saveContact;
+  final String locationAutoSent;
+  final String contactSaved;
+  final String sosTriggeredByGlasses;
+
   const AppStrings({
     required this.talk,
     required this.vision,
@@ -262,11 +286,16 @@ class AppStrings {
     required this.analysing,
     required this.recognizedText,
     required this.currencyTotal,
+    required this.currencyBreakdownLabel,
     required this.objectsMode,
     required this.objectsModeDesc,
+    required this.detectedObjects,
+    required this.noObjectsFound,
     required this.currency,
     required this.readText,
     required this.objects,
+    required this.copied,
+    required this.copyText,
     required this.safetyTitle,
     required this.safetySub,
     required this.sosEmergency,
@@ -303,6 +332,12 @@ class AppStrings {
     required this.beginner,
     required this.daily,
     required this.emergency,
+    required this.wordDetail,
+    required this.lessonDetail,
+    required this.watchSign,
+    required this.close,
+    required this.meaning,
+    required this.signVideo,
     required this.profileTitle,
     required this.editProfile,
     required this.edit,
@@ -396,6 +431,18 @@ class AppStrings {
     required this.testing,
     required this.connectionSuccess,
     required this.connectionFailed,
+    // Emergency contact
+    required this.emergencyContact,
+    required this.addContact,
+    required this.editContact,
+    required this.deleteContact,
+    required this.contactName,
+    required this.phoneNumber,
+    required this.sendVia,
+    required this.saveContact,
+    required this.locationAutoSent,
+    required this.contactSaved,
+    required this.sosTriggeredByGlasses,
   });
 }
 
@@ -455,12 +502,17 @@ const _en = AppStrings(
   analysing: 'Analysing…',
   recognizedText: 'Recognized text',
   currencyTotal: 'Currency total',
+  currencyBreakdownLabel: 'Breakdown',
   objectsMode: 'Objects mode',
   objectsModeDesc:
-      'On-device object recognition (MobileNet). Pick an image to see labels.',
+      'On-device object recognition. Pick an image to detect objects.',
+  detectedObjects: 'Detected objects',
+  noObjectsFound: 'No objects detected – try a clearer image.',
   currency: 'Currency',
   readText: 'Read Text',
   objects: 'Objects',
+  copied: 'Copied to clipboard',
+  copyText: 'Copy',
   // Safety
   safetyTitle: 'Safety',
   safetySub: 'Emergency SOS · Obstacle detection',
@@ -499,6 +551,12 @@ const _en = AppStrings(
   beginner: 'Beginner',
   daily: 'Daily',
   emergency: 'Emergency',
+  wordDetail: 'Word Detail',
+  lessonDetail: 'Lesson Detail',
+  watchSign: 'Watch Sign',
+  close: 'Close',
+  meaning: 'Meaning',
+  signVideo: 'Sign Language Video',
   // Profile
   profileTitle: 'Profile',
   editProfile: 'Edit Profile',
@@ -598,7 +656,19 @@ const _en = AppStrings(
   connect: 'Connect',
   testing: 'Testing connection…',
   connectionSuccess: 'Connected successfully!',
-  connectionFailed: 'Could not connect. Check the IP and try again.',
+  connectionFailed: 'Failed to connect. Check the address and try again.',
+  // Emergency contact
+  emergencyContact: 'Emergency Contact',
+  addContact: 'Add Contact',
+  editContact: 'Edit',
+  deleteContact: 'Delete',
+  contactName: 'Contact name',
+  phoneNumber: 'Phone number (e.g. 01012345678)',
+  sendVia: 'Send via:',
+  saveContact: 'Save',
+  locationAutoSent: 'Your location will be sent automatically on SOS',
+  contactSaved: 'Emergency contact saved',
+  sosTriggeredByGlasses: 'SOS triggered by glasses button',
 );
 
 const _ar = AppStrings(
@@ -657,12 +727,17 @@ const _ar = AppStrings(
   analysing: 'جاري التحليل…',
   recognizedText: 'النص المتعرّف عليه',
   currencyTotal: 'إجمالي العملة',
+  currencyBreakdownLabel: 'التفاصيل',
   objectsMode: 'وضع الأشياء',
   objectsModeDesc:
-      'تعرّف على الأشياء على الجهاز (MobileNet). اختر صورة لعرض التصنيفات.',
+      'تعرّف على الأشياء على الجهاز. اختر صورة لاكتشاف الأشياء.',
+  detectedObjects: 'الأشياء المكتشفة',
+  noObjectsFound: 'لم يتم اكتشاف أشياء – حاول بصورة أوضح.',
   currency: 'العملة',
   readText: 'قراءة النص',
   objects: 'الأشياء',
+  copied: 'تم النسخ',
+  copyText: 'نسخ',
   // Safety
   safetyTitle: 'الأمان',
   safetySub: 'طوارئ SOS · كشف العوائق',
@@ -701,6 +776,12 @@ const _ar = AppStrings(
   beginner: 'مبتدئ',
   daily: 'يومي',
   emergency: 'طوارئ',
+  wordDetail: 'تفاصيل الكلمة',
+  lessonDetail: 'تفاصيل الدرس',
+  watchSign: 'شاهد الإشارة',
+  close: 'إغلاق',
+  meaning: 'المعنى',
+  signVideo: 'فيديو لغة الإشارة',
   // Profile
   profileTitle: 'الملف الشخصي',
   editProfile: 'تعديل الملف',
@@ -800,6 +881,18 @@ const _ar = AppStrings(
   testing: 'اختبار الاتصال…',
   connectionSuccess: 'تم الاتصال بنجاح!',
   connectionFailed: 'تعذر الاتصال. تحقق من العنوان وحاول مجدداً.',
+  // Emergency contact
+  emergencyContact: 'جهة الاتصال الطارئ',
+  addContact: 'إضافة جهة اتصال',
+  editContact: 'تعديل',
+  deleteContact: 'حذف',
+  contactName: 'اسم جهة الاتصال',
+  phoneNumber: 'رقم الهاتف (مثال: 01012345678)',
+  sendVia: 'إرسال عبر:',
+  saveContact: 'حفظ',
+  locationAutoSent: 'سيتم إرسال موقعك تلقائياً عند الضغط على SOS',
+  contactSaved: 'تم حفظ جهة الاتصال الطارئ',
+  sosTriggeredByGlasses: 'تم تفعيل SOS عبر زر النظارات',
 );
 
 /// Convenience accessor – use `t(ref)` anywhere you have a `WidgetRef`.

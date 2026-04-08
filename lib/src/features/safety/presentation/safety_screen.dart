@@ -7,23 +7,44 @@ import 'package:go_router/go_router.dart';
 import '../../../core/settings/translations.dart';
 import '../../../core/theme/ishara_theme.dart';
 import '../../../core/routing/app_router.dart';
+import '../data/emergency_contact_service.dart';
 import 'safety_controller.dart';
 
 enum SafetyInitialTab { dashboard, sos }
 
-class SafetyScreen extends ConsumerWidget {
+class SafetyScreen extends ConsumerStatefulWidget {
   const SafetyScreen({super.key, this.initialTab = SafetyInitialTab.dashboard});
   final SafetyInitialTab initialTab;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SafetyScreen> createState() => _SafetyScreenState();
+}
+
+class _SafetyScreenState extends ConsumerState<SafetyScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Listen for glasses-triggered SOS and auto-navigate
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.listen<SafetyState>(safetyControllerProvider, (prev, next) {
+        if (next.triggeredByGlasses &&
+            next.sosPhase == SosPhase.countingDown &&
+            (prev == null || prev.sosPhase == SosPhase.idle)) {
+          context.push(AppRoute.sos);
+        }
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final state = ref.watch(safetyControllerProvider);
     final controller = ref.read(safetyControllerProvider.notifier);
     final s = t(ref);
 
-    if (initialTab == SafetyInitialTab.sos) {
+    if (widget.initialTab == SafetyInitialTab.sos) {
       return _SosFullScreen(
         state: state,
         controller: controller,
@@ -66,22 +87,21 @@ class SafetyScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  ShaderMask(
-                    blendMode: BlendMode.srcIn,
-                    shaderCallback:
-                        (b) => const LinearGradient(
-                          colors: [Color(0xFFEF4444), Color(0xFFF97316)],
-                        ).createShader(Rect.fromLTWH(0, 0, b.width, b.height)),
-                    child: Text(
+                    Text(
                       s.safetyTitle,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.w800,
                         letterSpacing: -0.5,
                         height: 1.1,
+                        foreground: Paint()
+                          ..shader = const LinearGradient(
+                            colors: [Color(0xFFEF4444), Color(0xFFF97316)],
+                          ).createShader(
+                            const Rect.fromLTWH(0, 0, 200, 40),
+                          ),
                       ),
                     ),
-                  ),
                   const SizedBox(height: 2),
                   Text(
                     s.safetySub,
@@ -134,6 +154,23 @@ class SafetyScreen extends ConsumerWidget {
                       begin: 0.15,
                       end: 0,
                       delay: 200.ms,
+                      duration: 300.ms,
+                    ),
+
+                const SizedBox(height: 16),
+
+                // ── Emergency Contact card ────────────────────────────────
+                _EmergencyContactCard(
+                      isDark: isDark,
+                      teal: teal,
+                      theme: theme,
+                    )
+                    .animate()
+                    .fadeIn(delay: 300.ms, duration: 400.ms)
+                    .slideY(
+                      begin: 0.15,
+                      end: 0,
+                      delay: 300.ms,
                       duration: 300.ms,
                     ),
 
@@ -823,6 +860,474 @@ class _SosActionButton extends StatelessWidget {
         child: Text(
           label,
           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Emergency Contact Card ───────────────────────────────────────────────────
+class _EmergencyContactCard extends ConsumerStatefulWidget {
+  const _EmergencyContactCard({
+    required this.isDark,
+    required this.teal,
+    required this.theme,
+  });
+  final bool isDark;
+  final Color teal;
+  final ThemeData theme;
+
+  @override
+  ConsumerState<_EmergencyContactCard> createState() =>
+      _EmergencyContactCardState();
+}
+
+class _EmergencyContactCardState
+    extends ConsumerState<_EmergencyContactCard> {
+  final _nameCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
+  SosMessagingApp _app = SosMessagingApp.whatsapp;
+  bool _editing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final contact = ref.read(emergencyContactProvider);
+      if (contact != null) {
+        _nameCtrl.text = contact.name;
+        _phoneCtrl.text = contact.phone;
+        setState(() => _app = contact.preferredApp);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _phoneCtrl.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final name = _nameCtrl.text.trim();
+    final phone = _phoneCtrl.text.trim();
+    if (name.isEmpty || phone.isEmpty) return;
+    final contact = EmergencyContact(name: name, phone: phone, preferredApp: _app);
+    ref.read(emergencyContactProvider.notifier).save(contact);
+    HapticFeedback.lightImpact();
+    setState(() => _editing = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(t(ref).contactSaved),
+        backgroundColor: widget.teal,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _delete() {
+    ref.read(emergencyContactProvider.notifier).clear();
+    _nameCtrl.clear();
+    _phoneCtrl.clear();
+    setState(() {
+      _editing = false;
+      _app = SosMessagingApp.whatsapp;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = t(ref);
+    final contact = ref.watch(emergencyContactProvider);
+    final teal = widget.teal;
+    final isDark = widget.isDark;
+    const red = Color(0xFFEF4444);
+
+    final hasSaved = contact != null && contact.isValid;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: glassmorphismDecoration(dark: isDark).copyWith(
+        border: Border.all(color: red.withOpacity(0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header row
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.contact_phone_rounded,
+                    size: 18, color: red),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  s.emergencyContact,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+              ),
+              if (hasSaved && !_editing)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    GestureDetector(
+                      onTap: () => setState(() => _editing = true),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: teal.withOpacity(0.1),
+                          borderRadius: IsharaColors.pillRadius,
+                          border: Border.all(color: teal.withOpacity(0.25)),
+                        ),
+                        child: Text(s.editContact,
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: teal,
+                                fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    GestureDetector(
+                      onTap: _delete,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: red.withOpacity(0.08),
+                          borderRadius: IsharaColors.pillRadius,
+                          border: Border.all(color: red.withOpacity(0.2)),
+                        ),
+                        child: Text(s.deleteContact,
+                            style: const TextStyle(
+                                fontSize: 12,
+                                color: red,
+                                fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Saved contact display (non-editing mode)
+          if (hasSaved && !_editing) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: red.withOpacity(0.05),
+                borderRadius: IsharaColors.cardRadius,
+                border: Border.all(color: red.withOpacity(0.1)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.person_rounded, size: 14, color: red),
+                      const SizedBox(width: 6),
+                      Text(
+                        contact.name,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 14),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.phone_rounded, size: 14, color: red),
+                      const SizedBox(width: 6),
+                      Text(contact.phone,
+                          style: const TextStyle(fontSize: 13)),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        contact.preferredApp == SosMessagingApp.whatsapp
+                            ? Icons.chat_bubble_rounded
+                            : Icons.send_rounded,
+                        size: 14,
+                        color: red,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        contact.preferredApp == SosMessagingApp.whatsapp
+                            ? 'WhatsApp'
+                            : 'Telegram',
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          // Edit / Create form
+          if (!hasSaved || _editing) ...[
+            // Name field
+            _ContactField(
+              ctrl: _nameCtrl,
+              hintText: s.contactName,
+              icon: Icons.person_rounded,
+              isDark: isDark,
+              teal: teal,
+            ),
+            const SizedBox(height: 10),
+            // Phone field
+            _ContactField(
+              ctrl: _phoneCtrl,
+              hintText: s.phoneNumber,
+              icon: Icons.phone_rounded,
+              isDark: isDark,
+              teal: teal,
+              keyboardType: TextInputType.phone,
+            ),
+            const SizedBox(height: 12),
+
+            // App toggle -- Column+Wrap prevents overflow on small screens
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  s.sendVia,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white70 : Colors.black54,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    _AppToggleChip(
+                      label: 'WhatsApp',
+                      icon: Icons.chat_bubble_rounded,
+                      selected: _app == SosMessagingApp.whatsapp,
+                      color: const Color(0xFF25D366),
+                      onTap: () =>
+                          setState(() => _app = SosMessagingApp.whatsapp),
+                    ),
+                    _AppToggleChip(
+                      label: 'Telegram',
+                      icon: Icons.send_rounded,
+                      selected: _app == SosMessagingApp.telegram,
+                      color: const Color(0xFF0088CC),
+                      onTap: () =>
+                          setState(() => _app = SosMessagingApp.telegram),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Save button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _save,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: red,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 44),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: IsharaColors.cardRadius,
+                  ),
+                  elevation: 0,
+                ),
+                child: Text(
+                  s.saveContact,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ],
+
+          const SizedBox(height: 8),
+
+          // Info chip
+          Row(
+            children: [
+              Icon(Icons.info_outline_rounded,
+                  size: 13,
+                  color: isDark ? IsharaColors.mutedDark : IsharaColors.mutedLight),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Text(
+                  s.locationAutoSent,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isDark
+                        ? IsharaColors.mutedDark
+                        : IsharaColors.mutedLight,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ContactField extends StatefulWidget {
+  const _ContactField({
+    required this.ctrl,
+    required this.hintText,
+    required this.icon,
+    required this.isDark,
+    required this.teal,
+    this.keyboardType,
+  });
+  final TextEditingController ctrl;
+  final String hintText;
+  final IconData icon;
+  final bool isDark;
+  final Color teal;
+  final TextInputType? keyboardType;
+
+  @override
+  State<_ContactField> createState() => _ContactFieldState();
+}
+
+class _ContactFieldState extends State<_ContactField> {
+  late final FocusNode _focus;
+  bool _focused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _focus = FocusNode();
+    _focus.addListener(() => setState(() => _focused = _focus.hasFocus));
+  }
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      decoration: BoxDecoration(
+        borderRadius: IsharaColors.cardRadius,
+        color: widget.isDark
+            ? Colors.white.withOpacity(0.06)
+            : Colors.black.withOpacity(0.04),
+        border: Border.all(
+          color: _focused
+              ? widget.teal.withOpacity(0.6)
+              : (widget.isDark
+                  ? Colors.white.withOpacity(0.12)
+                  : Colors.black.withOpacity(0.1)),
+          width: _focused ? 1.5 : 1.0,
+        ),
+        boxShadow: _focused
+            ? [
+                BoxShadow(
+                  color: widget.teal.withOpacity(0.18),
+                  blurRadius: 8,
+                  spreadRadius: 0,
+                ),
+              ]
+            : [],
+      ),
+      child: ClipRRect(
+        borderRadius: IsharaColors.cardRadius,
+        child: TextField(
+          controller: widget.ctrl,
+          focusNode: _focus,
+          keyboardType: widget.keyboardType,
+          decoration: InputDecoration(
+            hintText: widget.hintText,
+            hintStyle: TextStyle(
+              color: widget.isDark
+                  ? Colors.white38
+                  : Colors.black38,
+              fontSize: 14,
+            ),
+            prefixIcon: Icon(widget.icon,
+                color: _focused ? widget.teal : widget.teal.withOpacity(0.6),
+                size: 18),
+            border: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            focusedBorder: InputBorder.none,
+            filled: true,
+            fillColor: Colors.transparent,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AppToggleChip extends StatelessWidget {
+  const _AppToggleChip({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.color,
+    required this.onTap,
+  });
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? color : color.withOpacity(0.08),
+          borderRadius: IsharaColors.pillRadius,
+          border: Border.all(
+              color: selected ? color : color.withOpacity(0.3)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: selected ? Colors.white : color),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: selected ? Colors.white : color,
+              ),
+            ),
+          ],
         ),
       ),
     );

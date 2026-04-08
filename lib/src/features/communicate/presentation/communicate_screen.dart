@@ -298,8 +298,7 @@ class _CompactPageHeader extends StatelessWidget {
           ),
         )
         .animate()
-        .fadeIn(duration: 350.ms)
-        .slideX(begin: -0.08, end: 0, duration: 300.ms);
+        .fadeIn(duration: 350.ms);
   }
 }
 
