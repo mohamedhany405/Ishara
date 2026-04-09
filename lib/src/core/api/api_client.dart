@@ -9,6 +9,7 @@
 library;
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Keys used in SharedPreferences for auth persistence.
@@ -27,11 +28,19 @@ class ApiClient {
   // flutter build <platform> --dart-define=API_BASE_URL=https://<your-backend-domain>
   static const String _apiBaseUrlFromEnv = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://ishara-api.onrender.com',
+    defaultValue: '',
   );
 
+  // For web: default to same-origin so /api routes can be served from the same Vercel project.
+  // For emulator/dev: fallback to host machine backend.
+  static String get _fallbackBaseUrl => kIsWeb ? Uri.base.origin : 'http://10.0.2.2:5000';
+
   /// The base URL used by the app. Useful for building dev tool URLs.
-  static String get defaultBaseUrl => _normalizeBaseUrl(_apiBaseUrlFromEnv);
+  static String get defaultBaseUrl {
+    final configured = _apiBaseUrlFromEnv.trim();
+    final selected = configured.isNotEmpty ? configured : _fallbackBaseUrl;
+    return _normalizeBaseUrl(selected);
+  }
 
   static String _normalizeBaseUrl(String value) {
     final trimmed = value.trim();

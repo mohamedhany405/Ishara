@@ -7,6 +7,7 @@ const User = require("../models/User");
 const {
     isCloudinaryConfigured,
     uploadAvatarToCloudinary,
+    uploadAvatarBufferToCloudinary,
 } = require("../utils/cloudinary");
 const { resolvePublicUrl } = require("../utils/urlUtils");
 
@@ -28,12 +29,15 @@ function buildUserResponse(req, user) {
     };
 }
 
-const uploadsDir = path.join(__dirname, "..", "uploads");
-if (!fs.existsSync(uploadsDir)) {
+const uploadsDir = process.env.VERCEL
+    ? path.join("/tmp", "ishara-uploads")
+    : path.join(__dirname, "..", "uploads");
+
+if (!isCloudinaryConfigured && !fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-const storage = multer.diskStorage({
+const localDiskStorage = multer.diskStorage({
     destination: function (req, file, cb) {
         cb(null, uploadsDir);
     },
@@ -60,7 +64,7 @@ const fileFilter = (req, file, cb) => {
 };
 
 const upload = multer({
-    storage: storage,
+    storage: isCloudinaryConfigured ? multer.memoryStorage() : localDiskStorage,
     limits: { fileSize: 2 * 1024 * 1024 },
     fileFilter: fileFilter,
 });
@@ -91,12 +95,21 @@ router.put(
             let avatarPath;
 
             if (isCloudinaryConfigured) {
-                const uploaded = await uploadAvatarToCloudinary(req.file.path, req.user.id);
-                avatarPath = uploaded.secure_url;
-
-                // Remove temporary local file after Cloudinary upload succeeds.
-                fs.unlink(req.file.path, () => {});
+                if (req.file.buffer) {
+                    const uploaded = await uploadAvatarBufferToCloudinary(req.file.buffer, req.user.id);
+                    avatarPath = uploaded.secure_url;
+                } else {
+                    const uploaded = await uploadAvatarToCloudinary(req.file.path, req.user.id);
+                    avatarPath = uploaded.secure_url;
+                    fs.unlink(req.file.path, () => {});
+                }
             } else {
+                if (process.env.VERCEL) {
+                    return res.status(503).json({
+                        success: false,
+                        message: "Avatar upload requires Cloudinary in Vercel deployment",
+                    });
+                }
                 avatarPath = resolvePublicUrl(req, `/uploads/${req.file.filename}`);
             }
 

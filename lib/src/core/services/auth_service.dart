@@ -3,9 +3,13 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
-/// Change this to your server's IP when running on a real device.
-/// For Android emulator 10.0.2.2 maps to the host machine's localhost.
-const String kApiBaseUrl = 'http://10.0.2.2:5000/api/auth';
+/// For production, pass API_BASE_URL at build time.
+/// Local fallback remains Android emulator host mapping.
+const String _apiBaseUrl = String.fromEnvironment(
+  'API_BASE_URL',
+  defaultValue: 'http://10.0.2.2:5000',
+);
+const String kApiBaseUrl = '$_apiBaseUrl/api/auth';
 const String _tokenKey = 'ishara_jwt';
 const String _userKey = 'ishara_user';
 
