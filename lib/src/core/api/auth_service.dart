@@ -32,7 +32,7 @@ class IsharaUser {
       id: (json['id'] ?? json['_id'] ?? '').toString(),
       email: json['email'] ?? '',
       name: json['name'] ?? '',
-      profilePic: json['profilePic'] ?? '',
+      profilePic: ApiClient.resolveAssetUrl(json['profilePic']?.toString()),
       role: json['role'] ?? 'user',
       isVerified: json['isVerified'] ?? false,
       disabilityType: json['disabilityType'] ?? 'hearing',
@@ -257,7 +257,7 @@ class AuthService {
       id: cached['id']!,
       email: cached['email'] ?? '',
       name: cached['name'] ?? '',
-      profilePic: cached['profilePic'] ?? '',
+      profilePic: ApiClient.resolveAssetUrl(cached['profilePic']),
       role: cached['role'] ?? 'user',
       disabilityType: cached['disabilityType'] ?? 'hearing',
     );
@@ -268,6 +268,16 @@ class AuthService {
     final data = e.response?.data;
     String message = 'An error occurred. Please try again.';
     Map<String, String>? fieldErrors;
+
+    if (e.type == DioExceptionType.connectionError ||
+        e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.receiveTimeout) {
+      return const AuthResult(
+        success: false,
+        message:
+            'Cannot reach server. Check your internet connection and API_BASE_URL configuration.',
+      );
+    }
 
     if (data is Map<String, dynamic>) {
       message = data['message'] ?? message;

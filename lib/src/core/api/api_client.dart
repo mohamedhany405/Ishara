@@ -23,33 +23,41 @@ class StorageKeys {
 }
 
 class ApiClient {
-  // ── Configure the server address here ────────────────────────────
-  //
-  //  ① Android emulator                → 'http://10.0.2.2:5000'
-  //  ② iOS Simulator (same Mac)        → 'http://localhost:5000'
-  //  ③ Physical device (phone/tablet)  → 'http://<YOUR_LAN_IP>:5000'
-  //
-  //  To find your LAN IP on Windows:
-  //    Open PowerShell → run:  ipconfig
-  //    Look for "IPv4 Address" under your Wi-Fi adapter, e.g. 192.168.1.25
-  //    Then set: 'http://192.168.1.25:5000'
-  //
-  //  ⚠️  Your phone and PC must be on the SAME Wi-Fi network.
-  //  ⚠️  Make sure the firewall allows port 5000 (add inbound rule in
-  //      Windows Defender Firewall for TCP port 5000 if needed).
-  // ─────────────────────────────────────────────────────────────────
-  static const String _defaultBaseUrl = 'http://192.168.1.46:5000';
+  // Cloud-first default. Override at build time with:
+  // flutter build <platform> --dart-define=API_BASE_URL=https://<your-backend-domain>
+  static const String _apiBaseUrlFromEnv = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://ishara-api.onrender.com',
+  );
 
   /// The base URL used by the app. Useful for building dev tool URLs.
-  static String get defaultBaseUrl => _defaultBaseUrl;
+  static String get defaultBaseUrl => _normalizeBaseUrl(_apiBaseUrlFromEnv);
+
+  static String _normalizeBaseUrl(String value) {
+    final trimmed = value.trim();
+    return trimmed.replaceAll(RegExp(r'/+$'), '');
+  }
+
+  /// Converts a potentially relative media path into an absolute URL.
+  static String resolveAssetUrl(String? value) {
+    final raw = (value ?? '').trim();
+    if (raw.isEmpty) return '';
+    if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+    final normalizedPath = raw.startsWith('/') ? raw : '/$raw';
+    return '${defaultBaseUrl}$normalizedPath';
+  }
 
   late final Dio _dio;
   final SharedPreferences _prefs;
 
   ApiClient(this._prefs, {String? baseUrl}) {
+    final resolvedBaseUrl = _normalizeBaseUrl(
+      baseUrl != null && baseUrl.trim().isNotEmpty ? baseUrl : defaultBaseUrl,
+    );
+
     _dio = Dio(
       BaseOptions(
-        baseUrl: baseUrl ?? _defaultBaseUrl,
+        baseUrl: resolvedBaseUrl,
         connectTimeout: const Duration(seconds: 15),
         receiveTimeout: const Duration(seconds: 15),
         headers: {'Content-Type': 'application/json'},

@@ -4,11 +4,31 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const User = require("../models/User");
+const {
+    isCloudinaryConfigured,
+    uploadAvatarToCloudinary,
+} = require("../utils/cloudinary");
+const { resolvePublicUrl } = require("../utils/urlUtils");
 
 // FIX: Import authMiddleware correctly - it exports { authMiddleware }
 const { authMiddleware } = require("../middleware/authMiddleware");
 
-const uploadsDir = "./uploads";
+function buildUserResponse(req, user) {
+    return {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        isVerified: user.isVerified,
+        profilePic: resolvePublicUrl(req, user.profilePic),
+        bio: user.bio,
+        disabilityType: user.disabilityType,
+        emergencyContacts: user.emergencyContacts,
+        preferences: user.preferences,
+    };
+}
+
+const uploadsDir = path.join(__dirname, "..", "uploads");
 if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
 }
@@ -68,28 +88,26 @@ router.put(
                 });
             }
 
-            const avatarPath = `/uploads/${req.file.filename}`;
+            let avatarPath;
+
+            if (isCloudinaryConfigured) {
+                const uploaded = await uploadAvatarToCloudinary(req.file.path, req.user.id);
+                avatarPath = uploaded.secure_url;
+
+                // Remove temporary local file after Cloudinary upload succeeds.
+                fs.unlink(req.file.path, () => {});
+            } else {
+                avatarPath = resolvePublicUrl(req, `/uploads/${req.file.filename}`);
+            }
+
             user.profilePic = avatarPath;
             await user.save();
-
-            const userResponse = {
-                id: user._id,
-                email: user.email,
-                name: user.name,
-                role: user.role,
-                isVerified: user.isVerified,
-                profilePic: user.profilePic,
-                bio: user.bio,
-                disabilityType: user.disabilityType,
-                emergencyContacts: user.emergencyContacts,
-                preferences: user.preferences,
-            };
 
             return res.json({
                 success: true,
                 message: "Profile picture updated successfully",
                 avatar: avatarPath,
-                user: userResponse,
+                user: buildUserResponse(req, user),
             });
         } catch (error) {
             console.error("Avatar update error:", error);
@@ -151,23 +169,10 @@ router.put("/update-profile", authMiddleware, async (req, res) => {
 
         await user.save();
 
-        const userResponse = {
-            id: user._id,
-            email: user.email,
-            name: user.name,
-            role: user.role,
-            isVerified: user.isVerified,
-            profilePic: user.profilePic,
-            bio: user.bio,
-            disabilityType: user.disabilityType,
-            emergencyContacts: user.emergencyContacts,
-            preferences: user.preferences,
-        };
-
         return res.json({
             success: true,
             message: "Profile updated successfully",
-            user: userResponse,
+            user: buildUserResponse(req, user),
         });
     } catch (error) {
         console.error("Profile update error:", error);
@@ -195,18 +200,7 @@ router.get("/profile", authMiddleware, async (req, res) => {
 
         return res.json({
             success: true,
-            user: {
-                id: user._id,
-                email: user.email,
-                name: user.name,
-                role: user.role,
-                isVerified: user.isVerified,
-                profilePic: user.profilePic,
-                bio: user.bio,
-                disabilityType: user.disabilityType,
-                emergencyContacts: user.emergencyContacts,
-                preferences: user.preferences,
-            },
+            user: buildUserResponse(req, user),
         });
     } catch (error) {
         console.error("Get profile error:", error);
@@ -238,7 +232,7 @@ router.get("/profile/:userId", async (req, res) => {
                 id: user._id,
                 name: user.name,
                 bio: user.bio,
-                profilePic: user.profilePic,
+                profilePic: resolvePublicUrl(req, user.profilePic),
                 disabilityType: user.disabilityType,
             },
         });

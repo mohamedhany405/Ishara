@@ -7,6 +7,8 @@ const otpGenerator = require("otp-generator");
 
 const User = require("../models/User");
 const sendEmail = require("../utils/sendEmail");
+const { otpEmail, resetPasswordEmail } = require("../utils/emailTemplates");
+const { getFrontendBaseUrl, resolvePublicUrl } = require("../utils/urlUtils");
 
 // FIX: Import authMiddleware correctly
 const { authMiddleware } = require("../middleware/authMiddleware");
@@ -19,6 +21,33 @@ const {
   forgotPasswordSchema,
   resetPasswordSchema,
 } = require("../validation/userValidator");
+
+function buildAuthUser(req, user) {
+  return {
+    id: user._id,
+    email: user.email,
+    name: user.name,
+    profilePic: resolvePublicUrl(req, user.profilePic),
+    role: user.role,
+    isVerified: user.isVerified,
+    disabilityType: user.disabilityType,
+  };
+}
+
+function buildMeUser(req, user) {
+  return {
+    id: user._id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    isVerified: user.isVerified,
+    profilePic: resolvePublicUrl(req, user.profilePic),
+    bio: user.bio,
+    disabilityType: user.disabilityType,
+    emergencyContacts: user.emergencyContacts,
+    preferences: user.preferences,
+  };
+}
 
 function sendJoiValidationError(res, error) {
   const fieldErrors =
@@ -72,27 +101,31 @@ router.post("/register", async (req, res) => {
     // Dynamic default avatar from user's name (teal bg, white text, bold initials)
     const profilePic = `https://ui-avatars.com/api/?name=${encodeURIComponent(name || "User")}&background=14B8A6&color=fff&size=128&bold=true`;
 
+    const skipVerify = process.env.SKIP_EMAIL_VERIFY === "true";
+
     const user = await User.create({
       ...value,
       password: hashedPassword,
       profilePic,
-      otp,
-      otpExpiry: Date.now() + 10 * 60 * 1000, // 10 minutes
+      isVerified: skipVerify,
+      otp: skipVerify ? undefined : otp,
+      otpExpiry: skipVerify ? undefined : Date.now() + 10 * 60 * 1000,
     });
 
     // Try to send OTP email, but don't block registration if it fails
-    try {
-      await sendEmail(
-        email,
-        "Your OTP Code",
-        `Hello,\n\nYour OTP code is: ${otp}\n\nValid for 10 minutes.\n\nThank you!`,
-      );
-    } catch (emailErr) {
-      console.error("Failed to send OTP email (user still created):", emailErr.message);
+    if (!skipVerify) {
+      try {
+        const tpl = otpEmail({ name, otp });
+        await sendEmail(email, tpl.subject, tpl.text, tpl.html);
+      } catch (emailErr) {
+        console.error("Failed to send OTP email (user still created):", emailErr.message);
+      }
     }
 
     return res.status(201).json({
-      message: "Registration successful. Check your email for OTP.",
+      message: skipVerify
+        ? "Registration successful. You can now log in."
+        : "Registration successful. Check your email for OTP.",
     });
   } catch (error) {
     console.error("Register error:", error);
@@ -143,15 +176,7 @@ router.post("/verify-otp", async (req, res) => {
     return res.json({
       message: "Email verified successfully",
       token,
-      user: {
-        id: user._id,
-        email: user.email,
-        name: user.name,
-        profilePic: user.profilePic,
-        role: user.role,
-        isVerified: user.isVerified,
-        disabilityType: user.disabilityType,
-      },
+      user: buildAuthUser(req, user),
     });
   } catch (error) {
     console.error("Verify OTP error:", error);
@@ -201,15 +226,7 @@ router.post("/login", async (req, res) => {
     return res.json({
       message: "Login successful",
       token,
-      user: {
-        id: user._id,
-        email: user.email,
-        name: user.name,
-        profilePic: user.profilePic,
-        role: user.role,
-        isVerified: user.isVerified,
-        disabilityType: user.disabilityType,
-      },
+      user: buildAuthUser(req, user),
     });
   } catch (error) {
     console.error("Login error:", error);
@@ -251,11 +268,8 @@ router.post("/resend-otp", async (req, res) => {
     user.otpExpiry = Date.now() + 10 * 60 * 1000;
     await user.save();
 
-    await sendEmail(
-      email,
-      "Your New OTP Code",
-      `Hello,\n\nYour new OTP code is: ${otp}\n\nValid for 10 minutes.\n\nThank you!`,
-    );
+    const tpl = otpEmail({ name: user.name, otp });
+    await sendEmail(email, tpl.subject, tpl.text, tpl.html);
 
     resendTimestamps.set(email, Date.now());
 
@@ -291,17 +305,10 @@ router.post("/forgot-password", async (req, res) => {
     user.resetPasswordExpiry = Date.now() + 3600000;
     await user.save();
 
-    const resetUrl = `http://localhost:3000/reset-password/${resetToken}`;
+    const resetUrl = `${getFrontendBaseUrl()}/reset-password/${resetToken}`;
 
-    await sendEmail(
-      email,
-      "Password Reset Request",
-      `Hello,\n\nClick this link to reset your password: ${resetUrl}\n\nValid for 1 hour.\n\nIf you didn't request this, ignore this email.`,
-      `<p>Hello,</p>
-   <p>Click this link to reset your password: <a href="${resetUrl}">Reset Password</a></p>
-   <p><strong>Valid for 1 hour.</strong></p>
-   <p>If you didn't request this, ignore this email.</p>`,
-    );
+    const tpl = resetPasswordEmail({ name: user.name, resetUrl });
+    await sendEmail(email, tpl.subject, tpl.text, tpl.html);
 
     return res.json({
       message: "Password reset link has been sent",
@@ -364,18 +371,7 @@ router.get("/me", authMiddleware, async (req, res) => {
 
     return res.json({
       success: true,
-      user: {
-        id: user._id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        isVerified: user.isVerified,
-        profilePic: user.profilePic,
-        bio: user.bio,
-        disabilityType: user.disabilityType,
-        emergencyContacts: user.emergencyContacts,
-        preferences: user.preferences,
-      },
+      user: buildMeUser(req, user),
     });
   } catch (error) {
     console.error("Get /me error:", error);

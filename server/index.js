@@ -12,9 +12,13 @@ const contactRoutes = require("./Routes/contactRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || "0.0.0.0";
+
+// Required behind Render/other reverse proxies for accurate client IP handling.
+app.set("trust proxy", 1);
 
 // Ensure uploads directory exists
-const uploadsDir = "./uploads";
+const uploadsDir = path.join(__dirname, "uploads");
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
@@ -38,20 +42,38 @@ const upload = multer({
 
 app.use(express.json());
 
-let corsOrigin = "*";
-try {
-  const isProd = JSON.parse(process.env.PRODUCTION_ORIGIN || "false");
-  corsOrigin = isProd ? process.env.CLIENT_ORIGIN : "*";
-} catch (err) {
-  console.warn(
-    "PRODUCTION_ORIGIN env variable is not valid JSON. Defaulting to *.",
-  );
-}
-app.use(cors({ origin: corsOrigin }));
+const allowedOrigins = new Set(
+  [
+    process.env.CLIENT_ORIGIN,
+    process.env.DEV_CLIENT_ORIGIN,
+    ...(process.env.ALLOWED_ORIGINS || "")
+      .split(",")
+      .map((origin) => origin.trim())
+      .filter(Boolean),
+  ].filter(Boolean)
+);
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      // Mobile apps and non-browser clients usually send no Origin header.
+      if (!origin) return callback(null, true);
+
+      // If no origins are configured, allow all to avoid accidental lockout.
+      if (allowedOrigins.size === 0 || allowedOrigins.has(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
+  })
+);
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 app.use(limiter);
 
@@ -99,9 +121,22 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 // User profile routes
 app.use("/api/users", profileRoutes);
 
+// Health route for uptime checks
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
 // Root route
 app.get("/", (req, res) => {
   res.json({ message: "API Server is running 🟢" });
+});
+
+// CORS error handler
+app.use((err, req, res, next) => {
+  if (typeof err?.message === "string" && err.message.startsWith("CORS blocked")) {
+    return res.status(403).json({ message: err.message });
+  }
+  next(err);
 });
 
 // JSON parse error handler
@@ -128,8 +163,8 @@ app.use((err, req, res, next) => {
 // Start server only after DB is connected (fixes internal server errors on first requests)
 connectDB()
   .then(() => {
-    app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
+    app.listen(PORT, HOST, () => {
+      console.log(`Server is running on ${HOST}:${PORT}`);
     });
   })
   .catch((err) => {
