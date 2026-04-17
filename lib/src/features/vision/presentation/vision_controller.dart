@@ -1,6 +1,5 @@
-import 'dart:io';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../data/ocr_service.dart';
 
@@ -57,7 +56,7 @@ class VisionController extends StateNotifier<VisionState> {
     state = state.copyWith(selectedTool: tool, error: null);
   }
 
-  Future<void> processImage(File imageFile) async {
+  Future<void> processImage(XFile imageFile) async {
     state = state.copyWith(isProcessing: true, error: null);
     try {
       final text = await _ocr.recognizeFromFile(imageFile);

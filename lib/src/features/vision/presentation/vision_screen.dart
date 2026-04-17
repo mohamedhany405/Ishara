@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -19,16 +19,22 @@ class VisionScreen extends ConsumerStatefulWidget {
 
 class _VisionScreenState extends ConsumerState<VisionScreen> {
   final ImagePicker _picker = ImagePicker();
-  File? _pickedImage;
+  XFile? _pickedImage;
+  Uint8List? _pickedImageBytes;
 
   Future<void> _pickImage(ImageSource source) async {
     HapticFeedback.mediumImpact();
     final xFile = await _picker.pickImage(source: source);
     if (xFile == null || !mounted) return;
-    setState(() => _pickedImage = File(xFile.path));
+    final bytes = await xFile.readAsBytes();
+    if (!mounted) return;
+    setState(() {
+      _pickedImage = xFile;
+      _pickedImageBytes = bytes;
+    });
     await ref
         .read(visionControllerProvider.notifier)
-        .processImage(File(xFile.path));
+        .processImage(xFile);
   }
 
   @override
@@ -115,7 +121,10 @@ class _VisionScreenState extends ConsumerState<VisionScreen> {
                       icon: const Icon(Icons.refresh_rounded),
                       onPressed: () {
                         ctrl.clearResult();
-                        setState(() => _pickedImage = null);
+                        setState(() {
+                          _pickedImage = null;
+                          _pickedImageBytes = null;
+                        });
                       },
                     ),
                 ],
@@ -211,14 +220,14 @@ class _VisionScreenState extends ConsumerState<VisionScreen> {
                 ],
 
                 // ── Image preview ──────────────────────────────────────
-                if (_pickedImage != null) ...[
+                if (_pickedImageBytes != null) ...[
                   const SizedBox(height: 16),
                   ClipRRect(
                         borderRadius: IsharaColors.cardRadius,
                         child: Stack(
                           children: [
-                            Image.file(
-                              _pickedImage!,
+                            Image.memory(
+                              _pickedImageBytes!,
                               height: 220,
                               width: double.infinity,
                               fit: BoxFit.cover,

@@ -1,7 +1,5 @@
 import 'dart:async';
 
-import 'package:tflite_flutter/tflite_flutter.dart';
-
 import '../domain/esl_translation_models.dart';
 
 /// Abstraction over the on-device ESL model so we can swap implementations.
@@ -41,11 +39,11 @@ class StubEslTranslator implements EslTranslator {
 /// Future implementation sketch using TFLite from V6 export.
 class TfliteEslTranslator implements EslTranslator {
   TfliteEslTranslator({
-    required this.interpreter,
+    required Object interpreter,
     required this.labels,
-  });
+  }) : _interpreter = interpreter;
 
-  final Interpreter interpreter;
+  final Object _interpreter;
   final List<String> labels;
 
   @override
@@ -53,6 +51,9 @@ class TfliteEslTranslator implements EslTranslator {
     required EslTranslationDirection direction,
     required String textInput,
   }) async {
+    // Prevent unused field warning until model wiring is implemented.
+    final _ = _interpreter;
+
     // TODO: feed preprocessed keypoint sequence from camera/mediapipe pipeline
     // into [1, T, F] tensor, then map argmax to labels.
     throw UnimplementedError('TfliteEslTranslator not wired yet.');
