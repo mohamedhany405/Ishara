@@ -226,7 +226,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                 return s.passwordRequired;
                               }
                               if (v.length < 8) return s.atLeast8;
-                              if (!RegExp(r'(?=.*[A-Za-z])(?=.*\d)').hasMatch(v)) {
+                              if (!RegExp(
+                                r'(?=.*[A-Za-z])(?=.*\d)',
+                              ).hasMatch(v)) {
                                 return s.letterAndNumber;
                               }
                               return null;
@@ -262,44 +264,56 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   physics: const NeverScrollableScrollPhysics(),
                   mainAxisSpacing: 10,
                   crossAxisSpacing: 10,
-                  childAspectRatio: 3.0,
+                  childAspectRatio: 2.6,
                   children:
                       _disabilityValues.map((d) {
                         final (value, icon) = d;
                         final label = disabilityLabels[value] ?? value;
                         final selected = _disability == value;
-                        return GestureDetector(
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            setState(() => _disability = value);
-                          },
-                          child: AnimatedContainer(
-                            duration: 200.ms,
-                            decoration: BoxDecoration(
-                              color: selected ? teal : teal.withOpacity(0.07),
-                              borderRadius: IsharaColors.cardRadius,
-                              border: Border.all(
-                                color: selected ? teal : teal.withOpacity(0.2),
+                        return Semantics(
+                          button: true,
+                          selected: selected,
+                          label: label,
+                          child: GestureDetector(
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              setState(() => _disability = value);
+                            },
+                            child: AnimatedContainer(
+                              duration: 200.ms,
+                              constraints: const BoxConstraints(
+                                minHeight: IsharaColors.minTouchTarget,
                               ),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  icon,
-                                  size: 16,
-                                  color: selected ? Colors.white : teal,
+                              decoration: BoxDecoration(
+                                color: selected ? teal : teal.withOpacity(0.07),
+                                borderRadius: IsharaColors.cardRadius,
+                                border: Border.all(
+                                  color:
+                                      selected ? teal : teal.withOpacity(0.2),
                                 ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  label,
-                                  style: TextStyle(
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    icon,
+                                    size: 16,
                                     color: selected ? Colors.white : teal,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(width: 6),
+                                  Flexible(
+                                    child: Text(
+                                      label,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: selected ? Colors.white : teal,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         );
@@ -321,12 +335,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
-                        s.haveAccount,
-                        style: theme.textTheme.bodySmall,
-                      ),
-                      GestureDetector(
-                        onTap: () => context.pop(),
+                      Text(s.haveAccount, style: theme.textTheme.bodySmall),
+                      TextButton(
+                        onPressed: _loading ? null : () => context.pop(),
+                        style: TextButton.styleFrom(
+                          minimumSize: const Size(
+                            IsharaColors.minTouchTarget,
+                            IsharaColors.minTouchTarget,
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                        ),
                         child: Text(
                           s.signIn,
                           style: TextStyle(

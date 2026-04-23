@@ -1,17 +1,21 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:ishara_app/src/core/hardware/hardware_connection_service.dart';
 import 'package:ishara_app/src/features/safety/presentation/safety_controller.dart';
 
 void main() {
   group('SafetyController', () {
     late SafetyController controller;
+    late HardwareConnectionService hardware;
 
     setUp(() {
-      controller = SafetyController();
+      hardware = HardwareConnectionService();
+      controller = SafetyController(hardware);
     });
 
     tearDown(() {
       controller.dispose();
+      hardware.dispose();
     });
 
     test('initial state is dashboard and idle', () {

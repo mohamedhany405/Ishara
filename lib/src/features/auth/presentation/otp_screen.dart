@@ -90,10 +90,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
         mode: LaunchMode.externalApplication,
       );
       if (!launched && mounted) {
-        setState(
-          () =>
-              _error = t(ref).browserError,
-        );
+        setState(() => _error = t(ref).browserError);
       }
     } catch (e) {
       if (mounted) {
@@ -309,20 +306,24 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: _otpFetching ? null : _autoFillOtp,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: orange,
-                              borderRadius: IsharaColors.pillRadius,
+                        SizedBox(
+                          height: IsharaColors.minTouchTarget,
+                          child: FilledButton(
+                            onPressed: _otpFetching ? null : _autoFillOtp,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: orange,
+                              foregroundColor: Colors.white,
+                              minimumSize: const Size(
+                                80,
+                                IsharaColors.minTouchTarget,
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
                             ),
                             child:
                                 _otpFetching
-                                    ? SizedBox(
+                                    ? const SizedBox(
                                       width: 14,
                                       height: 14,
                                       child: CircularProgressIndicator(
@@ -332,8 +333,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                                     )
                                     : Text(
                                       s.reopen,
-                                      style: TextStyle(
-                                        color: Colors.white,
+                                      style: const TextStyle(
                                         fontWeight: FontWeight.w700,
                                         fontSize: 12,
                                       ),
@@ -388,36 +388,40 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
 
               const SizedBox(height: 20),
 
-              GestureDetector(
-                onTap: _resend,
-                child:
-                    _resendLoading
-                        ? SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            color: teal,
-                            strokeWidth: 2,
+              SizedBox(
+                height: IsharaColors.minTouchTarget,
+                child: TextButton(
+                  onPressed:
+                      (_cooldownSec > 0 || _resendLoading) ? null : _resend,
+                  child:
+                      _resendLoading
+                          ? SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              color: teal,
+                              strokeWidth: 2,
+                            ),
+                          )
+                          : Text(
+                            _cooldownSec > 0
+                                ? '${s.resendIn} ${_cooldownSec}s'
+                                : s.resendCode,
+                            style: TextStyle(
+                              color:
+                                  _cooldownSec > 0
+                                      ? (isDark
+                                          ? IsharaColors.mutedDark
+                                          : IsharaColors.mutedLight)
+                                      : teal,
+                              fontWeight: FontWeight.w600,
+                              decoration:
+                                  _cooldownSec > 0
+                                      ? null
+                                      : TextDecoration.underline,
+                            ),
                           ),
-                        )
-                        : Text(
-                          _cooldownSec > 0
-                              ? '${s.resendIn} ${_cooldownSec}s'
-                              : s.resendCode,
-                          style: TextStyle(
-                            color:
-                                _cooldownSec > 0
-                                    ? (isDark
-                                        ? IsharaColors.mutedDark
-                                        : IsharaColors.mutedLight)
-                                    : teal,
-                            fontWeight: FontWeight.w600,
-                            decoration:
-                                _cooldownSec > 0
-                                    ? null
-                                    : TextDecoration.underline,
-                          ),
-                        ),
+                ),
               ).animate().fadeIn(delay: 400.ms, duration: 400.ms),
 
               const Spacer(flex: 3),
@@ -446,7 +450,7 @@ class _OtpBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 46,
+      width: 50,
       height: 54,
       margin: const EdgeInsets.symmetric(horizontal: 5),
       child: TextField(

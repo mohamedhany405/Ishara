@@ -14,6 +14,27 @@ if (!global.__isharaMongoose) {
 
 const cached = global.__isharaMongoose;
 
+if (!global.__isharaMongooseListenersBound) {
+  global.__isharaMongooseListenersBound = true;
+
+  mongoose.connection.on('connected', () => {
+    console.log('MongoDB connection state: connected');
+  });
+
+  mongoose.connection.on('disconnected', () => {
+    console.warn('MongoDB connection state: disconnected');
+  });
+
+  mongoose.connection.on('error', (error) => {
+    console.error('MongoDB runtime error:', error.message);
+  });
+}
+
+function toInt(value, fallback) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 function resolveMongoUri() {
   const rawUri = process.env.MONGODB_URI || process.env.CONNECTION_STRING;
   if (!rawUri) {
@@ -49,8 +70,18 @@ async function connectDB() {
   }
 
   if (!cached.promise) {
+    const connectionOptions = {
+      maxPoolSize: toInt(process.env.MONGODB_MAX_POOL_SIZE, 10),
+      serverSelectionTimeoutMS: toInt(
+        process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS,
+        10000
+      ),
+      socketTimeoutMS: toInt(process.env.MONGODB_SOCKET_TIMEOUT_MS, 45000),
+      family: 4,
+    };
+
     cached.promise = mongoose
-      .connect(uri)
+      .connect(uri, connectionOptions)
       .then((instance) => {
         console.log('MongoDB connected successfully');
         return instance;

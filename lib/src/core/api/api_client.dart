@@ -8,6 +8,8 @@
 ///  - Error handling
 library;
 
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -32,8 +34,9 @@ class ApiClient {
   );
 
   // For web: default to same-origin so /api routes can be served from the same Vercel project.
-  // For emulator/dev: fallback to host machine backend.
-  static String get _fallbackBaseUrl => kIsWeb ? Uri.base.origin : 'http://10.0.2.2:5000';
+  // For mobile: fallback to the stable cloud backend.
+  static String get _fallbackBaseUrl =>
+      kIsWeb ? Uri.base.origin : 'https://isharagrad.vercel.app';
 
   /// The base URL used by the app. Useful for building dev tool URLs.
   static String get defaultBaseUrl {
@@ -53,7 +56,7 @@ class ApiClient {
     if (raw.isEmpty) return '';
     if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
     final normalizedPath = raw.startsWith('/') ? raw : '/$raw';
-    return '${defaultBaseUrl}$normalizedPath';
+    return '$defaultBaseUrl$normalizedPath';
   }
 
   late final Dio _dio;
@@ -152,6 +155,26 @@ class ApiClient {
       'role': _prefs.getString(StorageKeys.userRole),
       'disabilityType': _prefs.getString(StorageKeys.userDisabilityType),
     };
+  }
+
+  /// Persists arbitrary JSON-serializable data for offline fallback.
+  Future<void> writeJsonCache(String key, Object value) async {
+    await _prefs.setString(key, jsonEncode(value));
+  }
+
+  /// Reads cached JSON data. Returns null for missing or malformed payloads.
+  dynamic readJsonCache(String key) {
+    final raw = _prefs.getString(key);
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      return jsonDecode(raw);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> removeJsonCache(String key) async {
+    await _prefs.remove(key);
   }
 
   // ── HTTP convenience wrappers ─────────────────────────────────────

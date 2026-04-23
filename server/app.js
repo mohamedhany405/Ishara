@@ -6,10 +6,13 @@ const express = require("express");
 const cors = require("cors");
 const rateLimit = require("express-rate-limit");
 const multer = require("multer");
+const mongoose = require("mongoose");
 
 const profileRoutes = require("./Routes/usersRoutes");
 const authRoutes = require("./Routes/authRoutes");
 const contactRoutes = require("./Routes/contactRoutes");
+const learningRoutes = require("./Routes/learningRoutes");
+const historyRoutes = require("./Routes/historyRoutes");
 const connectDB = require("./config/dbConfig");
 
 const app = express();
@@ -81,6 +84,8 @@ app.use(limiter);
 app.use("/api/auth", authRoutes);
 app.use("/api/contact", contactRoutes);
 app.use("/api/users", profileRoutes);
+app.use("/api/learning", learningRoutes);
+app.use("/api/history", historyRoutes);
 
 // Simple file upload route (kept for compatibility). In cloud mode, prefer Cloudinary.
 app.post("/api/upload", upload.single("file"), (req, res) => {
@@ -109,11 +114,38 @@ app.post("/api/upload", upload.single("file"), (req, res) => {
 app.use("/public", express.static(path.join(__dirname, "public")));
 app.use("/uploads", express.static(uploadsDir));
 
-app.get("/api/health", (req, res) => {
+function getMongoStateLabel(state) {
+  switch (state) {
+    case 1:
+      return "connected";
+    case 2:
+      return "connecting";
+    case 3:
+      return "disconnecting";
+    default:
+      return "disconnected";
+  }
+}
+
+app.get("/api/health", async (req, res) => {
+  if (mongoose.connection.readyState !== 1) {
+    try {
+      await ensureDbConnection();
+    } catch (_) {
+      // Keep health endpoint responsive even if DB is temporarily unavailable.
+    }
+  }
+
+  const readyState = mongoose.connection.readyState;
+
   res.json({
-    status: "ok",
+    status: readyState === 1 ? "ok" : "degraded",
     timestamp: new Date().toISOString(),
     runtime: process.env.VERCEL ? "vercel-serverless" : "node-server",
+    database: {
+      state: getMongoStateLabel(readyState),
+      readyState,
+    },
   });
 });
 

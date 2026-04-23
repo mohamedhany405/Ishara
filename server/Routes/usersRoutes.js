@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const Joi = require("joi");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
@@ -28,6 +29,27 @@ function buildUserResponse(req, user) {
         preferences: user.preferences,
     };
 }
+
+function buildEmergencyContactResponse(contact) {
+    return {
+        id: contact._id,
+        name: contact.name,
+        phone: contact.phone,
+        relationship: contact.relationship,
+    };
+}
+
+const emergencyContactSchema = Joi.object({
+    name: Joi.string().trim().min(2).max(100).required(),
+    phone: Joi.string().trim().min(5).max(30).required(),
+    relationship: Joi.string().trim().max(80).allow("").default(""),
+});
+
+const emergencyContactUpdateSchema = Joi.object({
+    name: Joi.string().trim().min(2).max(100),
+    phone: Joi.string().trim().min(5).max(30),
+    relationship: Joi.string().trim().max(80).allow(""),
+}).min(1);
 
 const uploadsDir = process.env.VERCEL
     ? path.join("/tmp", "ishara-uploads")
@@ -255,6 +277,167 @@ router.get("/profile/:userId", async (req, res) => {
             success: false,
             message: "Server error while fetching profile",
             error: error.message,
+        });
+    }
+});
+
+// GET /api/users/emergency-contacts
+router.get("/emergency-contacts", authMiddleware, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id).select("emergencyContacts");
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found",
+            });
+        }
+
+        const contacts = (user.emergencyContacts || []).map(
+            buildEmergencyContactResponse
+        );
+
+        return res.json({
+            success: true,
+            data: contacts,
+        });
+    } catch (error) {
+        console.error("Get emergency contacts error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Server error while fetching emergency contacts",
+        });
+    }
+});
+
+// POST /api/users/emergency-contacts
+router.post("/emergency-contacts", authMiddleware, async (req, res) => {
+    try {
+        const { error, value } = emergencyContactSchema.validate(req.body, {
+            abortEarly: false,
+            stripUnknown: true,
+        });
+
+        if (error) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid emergency contact data",
+                errors: error.details.map((d) => d.message),
+            });
+        }
+
+        const user = await User.findById(req.user.id);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found",
+            });
+        }
+
+        user.emergencyContacts.push(value);
+        await user.save();
+
+        const createdContact = user.emergencyContacts[user.emergencyContacts.length - 1];
+
+        return res.status(201).json({
+            success: true,
+            message: "Emergency contact created",
+            data: buildEmergencyContactResponse(createdContact),
+        });
+    } catch (error) {
+        console.error("Create emergency contact error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Server error while creating emergency contact",
+        });
+    }
+});
+
+// PUT /api/users/emergency-contacts/:contactId
+router.put("/emergency-contacts/:contactId", authMiddleware, async (req, res) => {
+    try {
+        const { error, value } = emergencyContactUpdateSchema.validate(req.body, {
+            abortEarly: false,
+            stripUnknown: true,
+        });
+
+        if (error) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid emergency contact update data",
+                errors: error.details.map((d) => d.message),
+            });
+        }
+
+        const user = await User.findById(req.user.id);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found",
+            });
+        }
+
+        const contact = user.emergencyContacts.id(req.params.contactId);
+        if (!contact) {
+            return res.status(404).json({
+                success: false,
+                message: "Emergency contact not found",
+            });
+        }
+
+        if (value.name !== undefined) contact.name = value.name;
+        if (value.phone !== undefined) contact.phone = value.phone;
+        if (value.relationship !== undefined) {
+            contact.relationship = value.relationship;
+        }
+
+        await user.save();
+
+        return res.json({
+            success: true,
+            message: "Emergency contact updated",
+            data: buildEmergencyContactResponse(contact),
+        });
+    } catch (error) {
+        console.error("Update emergency contact error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Server error while updating emergency contact",
+        });
+    }
+});
+
+// DELETE /api/users/emergency-contacts/:contactId
+router.delete("/emergency-contacts/:contactId", authMiddleware, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found",
+            });
+        }
+
+        const contact = user.emergencyContacts.id(req.params.contactId);
+        if (!contact) {
+            return res.status(404).json({
+                success: false,
+                message: "Emergency contact not found",
+            });
+        }
+
+        contact.deleteOne();
+        await user.save();
+
+        return res.json({
+            success: true,
+            message: "Emergency contact deleted",
+        });
+    } catch (error) {
+        console.error("Delete emergency contact error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Server error while deleting emergency contact",
         });
     }
 });

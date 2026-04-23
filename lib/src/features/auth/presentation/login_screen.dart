@@ -224,17 +224,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                     const SizedBox(height: 14),
 
-                    GestureDetector(
-                      onTap: _skip,
-                      child: Text(
-                        s.skipForNow,
-                        style: TextStyle(
-                          color:
-                              isDark
-                                  ? IsharaColors.mutedDark
-                                  : IsharaColors.mutedLight,
-                          fontSize: 14,
-                          decoration: TextDecoration.underline,
+                    SizedBox(
+                      height: IsharaColors.minTouchTarget,
+                      child: TextButton(
+                        onPressed: _loading ? null : _skip,
+                        child: Text(
+                          s.skipForNow,
+                          style: TextStyle(
+                            color:
+                                isDark
+                                    ? IsharaColors.mutedDark
+                                    : IsharaColors.mutedLight,
+                            fontSize: 14,
+                            decoration: TextDecoration.underline,
+                          ),
                         ),
                       ),
                     ).animate().fadeIn(delay: 400.ms, duration: 400.ms),
@@ -246,12 +249,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(
-                            s.noAccount,
-                            style: theme.textTheme.bodySmall,
-                          ),
-                          GestureDetector(
-                            onTap: () => context.push(AppRoute.register),
+                          Text(s.noAccount, style: theme.textTheme.bodySmall),
+                          TextButton(
+                            onPressed:
+                                _loading
+                                    ? null
+                                    : () => context.push(AppRoute.register),
+                            style: TextButton.styleFrom(
+                              minimumSize: const Size(
+                                IsharaColors.minTouchTarget,
+                                IsharaColors.minTouchTarget,
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                              ),
+                            ),
                             child: Text(
                               s.signUp,
                               style: TextStyle(
@@ -454,64 +466,94 @@ class GradientAuthButton extends StatefulWidget {
 
 class _GradientAuthButtonState extends State<GradientAuthButton> {
   bool _pressed = false;
+  bool _hovered = false;
+  bool _focused = false;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        widget.onTap();
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        scale: _pressed ? 0.96 : 1.0,
-        duration: 120.ms,
-        child: Container(
-          width: double.infinity,
-          height: 54,
-          decoration: BoxDecoration(
-            gradient:
-                widget.loading
-                    ? null
-                    : isharaHorizontalGradient(dark: widget.isDark),
-            color:
-                widget.loading
-                    ? (widget.isDark
-                        ? IsharaColors.darkCard
-                        : Colors.grey.shade200)
-                    : null,
-            borderRadius: IsharaColors.pillRadius,
-            boxShadow:
-                widget.loading
-                    ? []
-                    : [
-                      BoxShadow(
-                        color: IsharaColors.tealLight.withOpacity(0.35),
-                        blurRadius: 16,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-          ),
-          child: Center(
-            child:
-                widget.loading
-                    ? const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2.5,
-                      ),
-                    )
-                    : Text(
-                      widget.label,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
-                      ),
-                    ),
+    final active = !widget.loading;
+    final accent =
+        widget.isDark ? IsharaColors.tealDark : IsharaColors.tealLight;
+
+    return Semantics(
+      button: true,
+      enabled: active,
+      label: widget.label,
+      child: FocusableActionDetector(
+        enabled: active,
+        onShowFocusHighlight: (value) => setState(() => _focused = value),
+        onShowHoverHighlight: (value) => setState(() => _hovered = value),
+        child: AnimatedScale(
+          scale: _pressed ? 0.96 : 1.0,
+          duration: 120.ms,
+          child: Container(
+            width: double.infinity,
+            constraints: const BoxConstraints(
+              minHeight: IsharaColors.minTouchTarget + 4,
+            ),
+            decoration: BoxDecoration(
+              gradient:
+                  active ? isharaHorizontalGradient(dark: widget.isDark) : null,
+              color:
+                  active
+                      ? null
+                      : (widget.isDark
+                          ? IsharaColors.darkCard
+                          : Colors.grey.shade200),
+              borderRadius: IsharaColors.pillRadius,
+              border: Border.all(
+                color:
+                    _focused
+                        ? accent.withOpacity(0.95)
+                        : (_hovered
+                            ? accent.withOpacity(0.4)
+                            : Colors.transparent),
+                width: _focused ? 2 : 1,
+              ),
+              boxShadow:
+                  active
+                      ? [
+                        BoxShadow(
+                          color: accent.withOpacity(_hovered ? 0.45 : 0.35),
+                          blurRadius: _hovered ? 20 : 16,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                      : [],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: IsharaColors.pillRadius,
+              child: InkWell(
+                borderRadius: IsharaColors.pillRadius,
+                onTap: active ? widget.onTap : null,
+                onTapDown: (_) => setState(() => _pressed = true),
+                onTapUp: (_) => setState(() => _pressed = false),
+                onTapCancel: () => setState(() => _pressed = false),
+                splashColor: Colors.white.withOpacity(0.18),
+                highlightColor: Colors.white.withOpacity(0.08),
+                child: Center(
+                  child:
+                      widget.loading
+                          ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2.5,
+                            ),
+                          )
+                          : Text(
+                            widget.label,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                            ),
+                          ),
+                ),
+              ),
+            ),
           ),
         ),
       ),

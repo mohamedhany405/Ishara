@@ -1,11 +1,14 @@
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../../../core/hardware/glasses_provider.dart';
 import '../../../core/settings/translations.dart';
 import '../../../core/theme/ishara_theme.dart';
+import '../../translator/data/sign_language_service.dart';
 import '../../translator/data/speech_io_service.dart';
 import '../../translator/domain/esl_translation_models.dart';
 import '../../translator/presentation/translator_controller.dart';
@@ -27,6 +30,130 @@ class _CommunicateScreenState extends ConsumerState<CommunicateScreen> {
       final s = ref.read(translatorControllerProvider);
       if (s.inputText.isNotEmpty) _inputController.text = s.inputText;
     });
+  }
+
+  Future<bool> _showPermissionRationaleDialog() async {
+    final shouldRequest = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Allow Camera Access'),
+          content: const Text(
+            'Ishara needs camera access to read sign language gestures in real-time and instantly translate them to Arabic.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Not now'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Allow'),
+            ),
+          ],
+        );
+      },
+    );
+
+    return shouldRequest ?? false;
+  }
+
+  Future<void> _showOpenSettingsDialog() async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Camera Permission Required'),
+          content: const Text(
+            'Camera permission is currently blocked. Open app settings and enable camera access to use live sign translation.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Later'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await openAppSettings();
+              },
+              child: const Text('Open Settings'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<bool> _ensureCameraPermission(TranslatorController ctrl) async {
+    var status = await Permission.camera.status;
+
+    if (status.isGranted) {
+      ctrl.setCameraPermission(granted: true);
+      return true;
+    }
+
+    if (status.isDenied || status.isRestricted || status.isLimited) {
+      final approved = await _showPermissionRationaleDialog();
+      if (!approved) {
+        ctrl.setCameraPermission(granted: false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Camera access was not granted. Arabic to ESL text mode remains available.',
+              ),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        return false;
+      }
+
+      status = await Permission.camera.request();
+      if (status.isGranted) {
+        ctrl.setCameraPermission(granted: true);
+        return true;
+      }
+    }
+
+    final permanentlyDenied = status.isPermanentlyDenied;
+    ctrl.setCameraPermission(
+      granted: false,
+      permanentlyDenied: permanentlyDenied,
+    );
+
+    if (permanentlyDenied && mounted) {
+      await _showOpenSettingsDialog();
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Camera permission denied. You can continue using text and microphone translation.',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+
+    return false;
+  }
+
+  Future<void> _handleCameraToggle(
+    TranslatorState state,
+    TranslatorController ctrl,
+  ) async {
+    if (state.isCameraActive) {
+      await ctrl.toggleCamera();
+      return;
+    }
+
+    final allowed = await _ensureCameraPermission(ctrl);
+    if (!allowed || !mounted) {
+      return;
+    }
+
+    await ctrl.toggleCamera();
   }
 
   @override
@@ -106,6 +233,7 @@ class _CommunicateScreenState extends ConsumerState<CommunicateScreen> {
                         isDark: isDark,
                         theme: theme,
                         teal: teal,
+                        onCameraToggle: () => _handleCameraToggle(state, ctrl),
                       )
                       .animate()
                       .fadeIn(delay: 150.ms, duration: 300.ms)
@@ -137,8 +265,7 @@ class _CommunicateScreenState extends ConsumerState<CommunicateScreen> {
                   const SizedBox(height: 16),
 
                   // Quick phrases – only for AR → ESL
-                  if (state.direction ==
-                      EslTranslationDirection.arabicToEsl)
+                  if (state.direction == EslTranslationDirection.arabicToEsl)
                     _QuickPhrases(
                       phrases: phrases,
                       ctrl: ctrl,
@@ -332,8 +459,7 @@ class _DirectionToggle extends ConsumerWidget {
         children: [
           _LangPill(
             label: s.eslToArabic,
-            selected:
-                state.direction == EslTranslationDirection.eslToArabic,
+            selected: state.direction == EslTranslationDirection.eslToArabic,
             teal: teal,
             onTap:
                 state.direction == EslTranslationDirection.eslToArabic
@@ -342,8 +468,7 @@ class _DirectionToggle extends ConsumerWidget {
           ),
           _LangPill(
             label: s.arabicToEsl,
-            selected:
-                state.direction == EslTranslationDirection.arabicToEsl,
+            selected: state.direction == EslTranslationDirection.arabicToEsl,
             teal: teal,
             onTap:
                 state.direction == EslTranslationDirection.arabicToEsl
@@ -371,28 +496,35 @@ class _LangPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          if (onTap != null) {
-            HapticFeedback.selectionClick();
-            onTap!();
-          }
-        },
-        child: AnimatedContainer(
-          duration: 220.ms,
-          curve: Curves.easeInOut,
-          height: 38,
-          decoration: BoxDecoration(
-            color: selected ? teal : Colors.transparent,
-            borderRadius: IsharaColors.pillRadius,
-          ),
-          child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                color: selected ? Colors.white : teal,
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
+      child: Semantics(
+        button: true,
+        selected: selected,
+        label: label,
+        child: GestureDetector(
+          onTap: () {
+            if (onTap != null) {
+              HapticFeedback.selectionClick();
+              onTap!();
+            }
+          },
+          child: AnimatedContainer(
+            duration: 220.ms,
+            curve: Curves.easeInOut,
+            constraints: const BoxConstraints(
+              minHeight: IsharaColors.minTouchTarget,
+            ),
+            decoration: BoxDecoration(
+              color: selected ? teal : Colors.transparent,
+              borderRadius: IsharaColors.pillRadius,
+            ),
+            child: Center(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: selected ? Colors.white : teal,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
               ),
             ),
           ),
@@ -411,6 +543,7 @@ class _InputCard extends ConsumerWidget {
     required this.isDark,
     required this.theme,
     required this.teal,
+    required this.onCameraToggle,
   });
   final TranslatorState state;
   final TranslatorController ctrl;
@@ -418,6 +551,7 @@ class _InputCard extends ConsumerWidget {
   final bool isDark;
   final ThemeData theme;
   final Color teal;
+  final Future<void> Function() onCameraToggle;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -429,6 +563,7 @@ class _InputCard extends ConsumerWidget {
         isDark: isDark,
         theme: theme,
         teal: teal,
+        onCameraToggle: onCameraToggle,
       );
     }
     // AR → ESL: text + mic mode
@@ -451,16 +586,39 @@ class _EslCameraCard extends ConsumerWidget {
     required this.isDark,
     required this.theme,
     required this.teal,
+    required this.onCameraToggle,
   });
   final TranslatorState state;
   final TranslatorController ctrl;
   final bool isDark;
   final ThemeData theme;
   final Color teal;
+  final Future<void> Function() onCameraToggle;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = t(ref);
+    final signService = ref.watch(signLanguageServiceProvider);
+    final cameraController = signService.cameraController;
+    final hasPreview =
+        state.isCameraActive &&
+        cameraController != null &&
+        cameraController.value.isInitialized;
+
+    final detectedText =
+        state.detectedSentence.trim().isNotEmpty
+            ? state.detectedSentence.trim()
+            : state.lastDetectedWord.trim();
+    final hasDetection = detectedText.isNotEmpty;
+
+    final loadingProgress =
+        state.framesNeeded <= 0
+            ? 0.0
+            : (state.framesCollected / state.framesNeeded).clamp(0.0, 1.0);
+
+    final waitingHint =
+        state.handsDetected ? s.waitingForSigns : s.noSignDetected;
+
     return Container(
       decoration: glassmorphismDecoration(dark: isDark),
       padding: const EdgeInsets.all(16),
@@ -473,77 +631,208 @@ class _EslCameraCard extends ConsumerWidget {
             teal: teal,
           ),
           const SizedBox(height: 16),
-          // ── Animated scan area ──────────────────────
-          AnimatedContainer(
-            duration: 400.ms,
-            height: 120,
-            decoration: BoxDecoration(
-              color: teal.withOpacity(state.isCameraActive ? 0.08 : 0.04),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: teal.withOpacity(state.isCameraActive ? 0.5 : 0.15),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              height: 280,
+              decoration: BoxDecoration(
+                border: Border.all(color: teal.withOpacity(0.3)),
+                borderRadius: BorderRadius.circular(16),
               ),
-            ),
-            child: Center(
-              child: state.isCameraActive
-                  ? Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SizedBox(
-                          width: 36,
-                          height: 36,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 3,
-                            color: teal,
-                          ),
-                        ).animate(onPlay: (c) => c.repeat()).shimmer(
-                              duration: 1200.ms,
-                              color: teal.withOpacity(0.3),
-                            ),
-                        const SizedBox(height: 10),
-                        Text(
-                          s.waitingForSigns,
-                          style: TextStyle(
-                            color: teal,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (hasPreview)
+                    FittedBox(
+                      fit: BoxFit.cover,
+                      child: SizedBox(
+                        width:
+                            cameraController.value.previewSize?.height ?? 360,
+                        height:
+                            cameraController.value.previewSize?.width ?? 640,
+                        child: CameraPreview(cameraController),
+                      ),
                     )
-                  : Column(
-                      mainAxisSize: MainAxisSize.min,
+                  else
+                    Container(
+                      color: Colors.black,
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.videocam_off_rounded,
+                              size: 36,
+                              color: Colors.white.withOpacity(0.5),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              s.pointCamera,
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.8),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                  Positioned(
+                    left: 10,
+                    top: 10,
+                    right: 10,
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
                       children: [
-                        Icon(
-                          Icons.videocam_off_rounded,
-                          size: 32,
-                          color: teal.withOpacity(0.3),
+                        _CameraInfoChip(
+                          icon:
+                              state.isModelReady
+                                  ? Icons.memory_rounded
+                                  : Icons.memory_outlined,
+                          label:
+                              state.isModelReady
+                                  ? 'Model Ready'
+                                  : 'Model Loading',
+                          active: state.isModelReady,
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          s.pointCamera,
-                          style: TextStyle(
-                            color: isDark
-                                ? IsharaColors.mutedDark
-                                : IsharaColors.mutedLight,
-                            fontSize: 12,
+                        _CameraInfoChip(
+                          icon: Icons.speed_rounded,
+                          label: '${state.streamFps.toStringAsFixed(1)} FPS',
+                          active: state.streamFps >= 6,
+                        ),
+                        _CameraInfoChip(
+                          icon: Icons.timelapse_rounded,
+                          label:
+                              '${state.framesCollected}/${state.framesNeeded}',
+                          active: state.framesCollected >= state.framesNeeded,
+                        ),
+                        if (state.lowLight)
+                          const _CameraInfoChip(
+                            icon: Icons.wb_twilight_rounded,
+                            label: 'Low Light',
+                            active: false,
                           ),
-                        ),
                       ],
                     ),
+                  ),
+
+                  Positioned(
+                    left: 10,
+                    right: 10,
+                    bottom: 10,
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.55),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.12),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          AnimatedSwitcher(
+                            duration: 220.ms,
+                            child: Text(
+                              hasDetection ? detectedText : waitingHint,
+                              key: ValueKey<String>(
+                                '${state.detectedSentence}_${state.framesCollected}',
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: hasDetection ? 28 : 14,
+                                fontWeight:
+                                    hasDetection
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                height: 1.1,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          if (hasDetection)
+                            Row(
+                              children: [
+                                Text(
+                                  '${(state.detectionConfidence * 100).toStringAsFixed(0)}% ${s.confident}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                if (state.lastDetectedWord.trim().isNotEmpty)
+                                  Expanded(
+                                    child: Text(
+                                      state.lastDetectedWord,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: Colors.white.withOpacity(0.85),
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            )
+                          else
+                            Text(
+                              state.lowLight
+                                  ? 'Increase lighting for better landmark detection.'
+                                  : s.pointCamera,
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.85),
+                                fontSize: 12,
+                              ),
+                            ),
+                          const SizedBox(height: 8),
+                          LinearProgressIndicator(
+                            value: loadingProgress,
+                            minHeight: 4,
+                            backgroundColor: Colors.white.withOpacity(0.18),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              hasDetection ? const Color(0xFF22C55E) : teal,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 14),
-          // ── Start / Stop camera button ──────────────
+          const SizedBox(height: 12),
           _GradientPill(
             label: state.isCameraActive ? s.stopCamera : s.startCamera,
-            icon: state.isCameraActive
-                ? Icons.stop_rounded
-                : Icons.videocam_rounded,
+            icon:
+                state.isCameraActive
+                    ? Icons.stop_rounded
+                    : Icons.videocam_rounded,
             isDark: isDark,
             teal: teal,
-            onTap: ctrl.toggleCamera,
+            onTap: () {
+              onCameraToggle();
+            },
           ),
+          if (!state.hasCameraPermission && !state.isCameraActive) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Camera permission is required for live sign detection. '
+              'If denied, Arabic to ESL text translation remains available.',
+              style: TextStyle(
+                color:
+                    isDark ? IsharaColors.mutedDark : IsharaColors.mutedLight,
+                fontSize: 12,
+              ),
+            ),
+          ],
           if (state.error != null) ...[
             const SizedBox(height: 8),
             Text(
@@ -551,6 +840,46 @@ class _EslCameraCard extends ConsumerWidget {
               style: TextStyle(color: theme.colorScheme.error, fontSize: 12),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+class _CameraInfoChip extends StatelessWidget {
+  const _CameraInfoChip({
+    required this.icon,
+    required this.label,
+    required this.active,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = active ? const Color(0xFF22C55E) : Colors.white;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.55),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withOpacity(0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
@@ -606,36 +935,38 @@ class _ArabicInputCard extends ConsumerWidget {
           ),
           const SizedBox(height: 10),
           // ── Audio source toggle (only when glasses connected) ───
-          Builder(builder: (context) {
-            final glassesConnected = ref.watch(isGlassesConnectedProvider);
-            if (!glassesConnected) return const SizedBox.shrink();
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                children: [
-                  Icon(Icons.bluetooth_audio, size: 16, color: teal),
-                  const SizedBox(width: 6),
-                  Text(s.micSource, style: theme.textTheme.labelSmall),
-                  const SizedBox(width: 8),
-                  ChoiceChip(
-                    label: Text(s.phone),
-                    selected: state.audioSource == AudioSource.phoneMic,
-                    onSelected: (_) =>
-                        ctrl.setAudioSource(AudioSource.phoneMic),
-                    visualDensity: VisualDensity.compact,
-                  ),
-                  const SizedBox(width: 6),
-                  ChoiceChip(
-                    label: Text(s.glasses),
-                    selected: state.audioSource == AudioSource.glassesMic,
-                    onSelected: (_) =>
-                        ctrl.setAudioSource(AudioSource.glassesMic),
-                    visualDensity: VisualDensity.compact,
-                  ),
-                ],
-              ),
-            );
-          }),
+          Builder(
+            builder: (context) {
+              final glassesConnected = ref.watch(isGlassesConnectedProvider);
+              if (!glassesConnected) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Icon(Icons.bluetooth_audio, size: 16, color: teal),
+                    const SizedBox(width: 6),
+                    Text(s.micSource, style: theme.textTheme.labelSmall),
+                    const SizedBox(width: 8),
+                    ChoiceChip(
+                      label: Text(s.phone),
+                      selected: state.audioSource == AudioSource.phoneMic,
+                      onSelected:
+                          (_) => ctrl.setAudioSource(AudioSource.phoneMic),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    const SizedBox(width: 6),
+                    ChoiceChip(
+                      label: Text(s.glasses),
+                      selected: state.audioSource == AudioSource.glassesMic,
+                      onSelected:
+                          (_) => ctrl.setAudioSource(AudioSource.glassesMic),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
           Row(
             children: [
               Expanded(
@@ -656,9 +987,10 @@ class _ArabicInputCard extends ConsumerWidget {
                   isDark: isDark,
                   active: state.isListening,
                   teal: teal,
-                  onTap: state.isListening
-                      ? ctrl.stopListening
-                      : ctrl.startListening,
+                  onTap:
+                      state.isListening
+                          ? ctrl.stopListening
+                          : ctrl.startListening,
                 ),
               ),
             ],
@@ -695,8 +1027,11 @@ class _OutputCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final s = t(ref);
     final hasOutput = state.outputText.isNotEmpty;
-    final isEslToAr =
-        state.direction == EslTranslationDirection.eslToArabic;
+    final isEslToAr = state.direction == EslTranslationDirection.eslToArabic;
+    final livePlaceholder =
+        state.isCameraActive ? s.noSignDetected : s.pointCamera;
+    final confidenceValue = state.detectionConfidence.clamp(0.0, 1.0);
+
     return Container(
       decoration: glassmorphismDecoration(dark: isDark),
       padding: const EdgeInsets.all(16),
@@ -716,14 +1051,54 @@ class _OutputCard extends ConsumerWidget {
               key: ValueKey(state.outputText),
               hasOutput
                   ? state.outputText
-                  : s.translatedTextHere,
+                  : (isEslToAr ? livePlaceholder : s.translatedTextHere),
               style: theme.textTheme.bodyLarge?.copyWith(
-                color: hasOutput
-                    ? theme.colorScheme.onSurface
-                    : theme.colorScheme.onSurface.withOpacity(0.4),
+                color:
+                    hasOutput
+                        ? theme.colorScheme.onSurface
+                        : theme.colorScheme.onSurface.withOpacity(0.4),
+                fontSize: isEslToAr ? 26 : null,
+                fontWeight: isEslToAr ? FontWeight.w700 : null,
+                height: isEslToAr ? 1.15 : null,
               ),
             ),
           ),
+          if (isEslToAr) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Text(
+                  '${(confidenceValue * 100).toStringAsFixed(0)}% ${s.confident}',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color:
+                        isDark
+                            ? IsharaColors.mutedDark
+                            : IsharaColors.mutedLight,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '${state.framesCollected}/${state.framesNeeded}',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color:
+                        isDark
+                            ? IsharaColors.mutedDark
+                            : IsharaColors.mutedLight,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            LinearProgressIndicator(
+              value: confidenceValue,
+              minHeight: 5,
+              borderRadius: BorderRadius.circular(999),
+              backgroundColor: teal.withOpacity(0.12),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                confidenceValue >= 0.8 ? const Color(0xFF22C55E) : teal,
+              ),
+            ),
+          ],
           if (hasOutput) ...[
             const SizedBox(height: 10),
             Row(
@@ -735,14 +1110,15 @@ class _OutputCard extends ConsumerWidget {
                   teal: teal,
                   onTap: ctrl.speakOutput,
                 ),
-                if (state.lastResult != null) ...[
+                if (!isEslToAr && state.lastResult != null) ...[
                   const Spacer(),
                   Text(
                     '${(state.lastResult!.confidence * 100).toStringAsFixed(0)}% ${s.confident}',
                     style: theme.textTheme.labelSmall?.copyWith(
-                      color: isDark
-                          ? IsharaColors.mutedDark
-                          : IsharaColors.mutedLight,
+                      color:
+                          isDark
+                              ? IsharaColors.mutedDark
+                              : IsharaColors.mutedLight,
                     ),
                   ),
                 ],
@@ -802,7 +1178,7 @@ class _QuickPhrases extends ConsumerWidget {
         ),
         const SizedBox(height: 8),
         SizedBox(
-          height: 40,
+          height: IsharaColors.minTouchTarget,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: phrases.length,
@@ -811,6 +1187,7 @@ class _QuickPhrases extends ConsumerWidget {
               final p = phrases[i];
               return ActionChip(
                 label: Text(p.label),
+                materialTapTargetSize: MaterialTapTargetSize.padded,
                 backgroundColor: teal.withOpacity(0.12),
                 side: BorderSide(color: teal.withOpacity(0.3)),
                 labelStyle: TextStyle(color: teal, fontWeight: FontWeight.w500),
@@ -843,19 +1220,20 @@ class _HowItWorksCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = t(ref);
-    final steps = direction == EslTranslationDirection.eslToArabic
-        ? [
-            (Icons.videocam_rounded, s.stepCamera, s.stepCameraDesc),
-            (Icons.swap_horiz_rounded, s.stepDirection, s.stepDirectionDesc),
-            (Icons.translate_rounded, s.stepTranslate, s.stepTranslateDesc),
-            (Icons.volume_up_rounded, s.stepListen, s.stepListenDesc),
-          ]
-        : [
-            (Icons.edit_note_rounded, s.stepType, s.stepTypeDesc),
-            (Icons.swap_horiz_rounded, s.stepDirection, s.stepDirectionDesc),
-            (Icons.translate_rounded, s.stepTranslate, s.stepTranslateDesc),
-            (Icons.volume_up_rounded, s.stepListen, s.stepListenDesc),
-          ];
+    final steps =
+        direction == EslTranslationDirection.eslToArabic
+            ? [
+              (Icons.videocam_rounded, s.stepCamera, s.stepCameraDesc),
+              (Icons.swap_horiz_rounded, s.stepDirection, s.stepDirectionDesc),
+              (Icons.translate_rounded, s.stepTranslate, s.stepTranslateDesc),
+              (Icons.volume_up_rounded, s.stepListen, s.stepListenDesc),
+            ]
+            : [
+              (Icons.edit_note_rounded, s.stepType, s.stepTypeDesc),
+              (Icons.swap_horiz_rounded, s.stepDirection, s.stepDirectionDesc),
+              (Icons.translate_rounded, s.stepTranslate, s.stepTranslateDesc),
+              (Icons.volume_up_rounded, s.stepListen, s.stepListenDesc),
+            ];
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: glassmorphismDecoration(dark: isDark),
@@ -1019,7 +1397,7 @@ class _GradientPill extends StatelessWidget {
               onTap!();
             },
     child: Container(
-      height: 40,
+      constraints: const BoxConstraints(minHeight: IsharaColors.minTouchTarget),
       decoration: BoxDecoration(
         gradient: onTap != null ? isharaHorizontalGradient(dark: isDark) : null,
         color:
@@ -1084,7 +1462,7 @@ class _OutlinePill extends StatelessWidget {
               onTap!();
             },
     child: Container(
-      height: 40,
+      constraints: const BoxConstraints(minHeight: IsharaColors.minTouchTarget),
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
         border: Border.all(

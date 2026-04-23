@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:vibration/vibration.dart';
 
 import '../../../core/hardware/glasses_provider.dart';
+import '../data/emergency_contact_service.dart';
 import '../../../core/hardware/hardware_connection_service.dart';
 
 enum SafetyTab { dashboard, sos }
@@ -65,14 +66,14 @@ class SafetyState {
   }
 
   static SafetyState get initial => SafetyState(
-        currentTab: SafetyTab.dashboard,
-        obstacleReading: null,
-        sosPhase: SosPhase.idle,
-        sosCountdownSeconds: 5,
-        lastSosLocation: null,
-        error: null,
-        glassesConnected: false,
-      );
+    currentTab: SafetyTab.dashboard,
+    obstacleReading: null,
+    sosPhase: SosPhase.idle,
+    sosCountdownSeconds: 5,
+    lastSosLocation: null,
+    error: null,
+    glassesConnected: false,
+  );
 }
 
 class SafetyController extends StateNotifier<SafetyState> {
@@ -212,11 +213,19 @@ class SafetyController extends StateNotifier<SafetyState> {
       if (await Vibration.hasVibrator() == true) {
         Vibration.vibrate(pattern: [0, 200, 100, 200]);
       }
+
+      final contact = await EmergencyContact.load();
+      if (contact != null && contact.isValid) {
+        final launchResult = await EmergencyContactService.sendSosMessage(
+          contact: contact,
+          position: pos,
+        );
+        if (!launchResult.success) {
+          state = state.copyWith(error: launchResult.message);
+        }
+      }
     } catch (e) {
-      state = state.copyWith(
-        sosPhase: SosPhase.idle,
-        error: e.toString(),
-      );
+      state = state.copyWith(sosPhase: SosPhase.idle, error: e.toString());
     }
   }
 
@@ -256,6 +265,6 @@ class SafetyController extends StateNotifier<SafetyState> {
 
 final safetyControllerProvider =
     StateNotifierProvider<SafetyController, SafetyState>((ref) {
-  final hw = ref.watch(hardwareServiceProvider);
-  return SafetyController(hw);
-});
+      final hw = ref.watch(hardwareServiceProvider);
+      return SafetyController(hw);
+    });

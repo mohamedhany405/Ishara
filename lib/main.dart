@@ -51,6 +51,18 @@ class IsharaApp extends ConsumerWidget {
         themeMode: settings.themeMode,
         routerConfig: router,
         locale: settings.locale,
+        builder: (context, child) {
+          final media = MediaQuery.of(context);
+          return MediaQuery(
+            data: media.copyWith(
+              textScaler: media.textScaler.clamp(
+                minScaleFactor: 1.0,
+                maxScaleFactor: 1.4,
+              ),
+            ),
+            child: child ?? const SizedBox.shrink(),
+          );
+        },
         debugShowCheckedModeBanner: false,
       ),
     );

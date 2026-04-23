@@ -2,9 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// ──────────────────────────────────────────────────────────────────────────
-/// Central Ishara color tokens – mirrors the web design system.
-/// ──────────────────────────────────────────────────────────────────────────
+/// Central spacing tokens based on an 8dp grid.
+class IsharaSpacing {
+  static const double xxs = 4;
+  static const double xs = 8;
+  static const double sm = 12;
+  static const double md = 16;
+  static const double lg = 24;
+  static const double xl = 32;
+  static const double xxl = 40;
+
+  static const EdgeInsets page = EdgeInsets.all(md);
+  static const EdgeInsets cardPadding = EdgeInsets.all(md);
+}
+
+/// Central Ishara color and shape tokens.
 class IsharaColors {
   // Brand palette
   static const Color tealLight = Color(0xFF14B8A6);
@@ -32,24 +44,33 @@ class IsharaColors {
   // Text
   static const Color lightForeground = Color(0xFF0F172A);
   static const Color darkForeground = Color(0xFFF1F5F9);
-  static const Color mutedLight = Color(0xFF64748B);
-  static const Color mutedDark = Color(0xFF94A3B8);
+  static const Color mutedLight = Color(0xFF475569);
+  static const Color mutedDark = Color(0xFFC5D0E0);
 
   // Borders
-  static const Color lightBorder = Color(0x1A000000);
+  static const Color lightBorder = Color(0x1F0F172A);
   static const Color darkBorder = Color(0xFF334155);
+
+  // Minimum touch target for accessibility
+  static const double minTouchTarget = 48;
 
   // Radii
   static const BorderRadius cardRadius = BorderRadius.all(Radius.circular(20));
   static const BorderRadius pillRadius = BorderRadius.all(Radius.circular(999));
   static const BorderRadius inputRadius = BorderRadius.all(Radius.circular(14));
+
+  static List<BoxShadow> cardShadow({required bool dark}) => [
+    BoxShadow(
+      color: dark ? Colors.black.withOpacity(0.35) : const Color(0x1A0F172A),
+      blurRadius: dark ? 18 : 14,
+      offset: const Offset(0, 8),
+    ),
+  ];
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Gradient helpers
-// ─────────────────────────────────────────────────────────────────────────────
 
-/// The signature Ishara teal → orange gradient (horizontal).
+/// The signature Ishara teal to orange gradient (horizontal).
 LinearGradient isharaHorizontalGradient({bool dark = false}) => LinearGradient(
   colors: [
     dark ? IsharaColors.tealDark : IsharaColors.tealLight,
@@ -69,8 +90,7 @@ LinearGradient isharaDiagonalGradient({bool dark = false}) => LinearGradient(
   end: Alignment.bottomRight,
 );
 
-/// Returns a `BoxDecoration` with a frosted-glass / glassmorphism look.
-/// Use for cards, bottom sheets, and floating containers.
+/// Returns a frosted glass style decoration for premium cards and containers.
 BoxDecoration glassmorphismDecoration({required bool dark}) => BoxDecoration(
   color:
       dark
@@ -85,80 +105,140 @@ BoxDecoration glassmorphismDecoration({required bool dark}) => BoxDecoration(
     width: 1.2,
   ),
   boxShadow: [
-    BoxShadow(
-      color: dark ? Colors.black54 : Colors.black12,
-      blurRadius: 24,
-      offset: const Offset(0, 8),
-    ),
-    BoxShadow(
-      color: dark ? IsharaColors.glowTeal : IsharaColors.glowTeal,
-      blurRadius: 40,
-      spreadRadius: -8,
-    ),
+    ...IsharaColors.cardShadow(dark: dark),
+    BoxShadow(color: IsharaColors.glowTeal, blurRadius: 40, spreadRadius: -8),
   ],
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Text theme built on Google Fonts Poppins
-// ─────────────────────────────────────────────────────────────────────────────
 TextTheme _buildTextTheme(TextTheme base, Color foreground, Color muted) {
-  final poppins = GoogleFonts.poppinsTextTheme(base);
+  final poppins = GoogleFonts.poppinsTextTheme(
+    base,
+  ).apply(bodyColor: foreground, displayColor: foreground);
+
   return poppins.copyWith(
     displayLarge: poppins.displayLarge?.copyWith(
+      fontSize: 52,
+      height: 1.08,
       color: foreground,
       fontWeight: FontWeight.w800,
-      letterSpacing: -1.5,
+      letterSpacing: -1.2,
     ),
     displayMedium: poppins.displayMedium?.copyWith(
+      fontSize: 44,
+      height: 1.1,
+      color: foreground,
+      fontWeight: FontWeight.w700,
+      letterSpacing: -0.8,
+    ),
+    displaySmall: poppins.displaySmall?.copyWith(
+      fontSize: 36,
+      height: 1.1,
       color: foreground,
       fontWeight: FontWeight.w700,
       letterSpacing: -0.5,
     ),
-    displaySmall: poppins.displaySmall?.copyWith(
-      color: foreground,
-      fontWeight: FontWeight.w700,
-    ),
     headlineLarge: poppins.headlineLarge?.copyWith(
+      fontSize: 30,
+      height: 1.18,
       color: foreground,
       fontWeight: FontWeight.w700,
     ),
     headlineMedium: poppins.headlineMedium?.copyWith(
+      fontSize: 26,
+      height: 1.2,
       color: foreground,
       fontWeight: FontWeight.w600,
     ),
     headlineSmall: poppins.headlineSmall?.copyWith(
+      fontSize: 22,
+      height: 1.25,
       color: foreground,
       fontWeight: FontWeight.w600,
     ),
     titleLarge: poppins.titleLarge?.copyWith(
+      fontSize: 20,
+      height: 1.3,
       color: foreground,
-      fontWeight: FontWeight.w600,
-      letterSpacing: 0.15,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.1,
     ),
     titleMedium: poppins.titleMedium?.copyWith(
+      fontSize: 17,
+      height: 1.35,
       color: foreground,
-      fontWeight: FontWeight.w500,
+      fontWeight: FontWeight.w600,
     ),
     titleSmall: poppins.titleSmall?.copyWith(
+      fontSize: 15,
+      height: 1.35,
+      color: muted,
+      fontWeight: FontWeight.w600,
+    ),
+    bodyLarge: poppins.bodyLarge?.copyWith(
+      fontSize: 16,
+      height: 1.45,
+      color: foreground,
+    ),
+    bodyMedium: poppins.bodyMedium?.copyWith(
+      fontSize: 14,
+      height: 1.45,
+      color: foreground,
+    ),
+    bodySmall: poppins.bodySmall?.copyWith(
+      fontSize: 12,
+      height: 1.4,
+      color: muted,
+    ),
+    labelLarge: poppins.labelLarge?.copyWith(
+      fontSize: 14,
+      height: 1.2,
+      color: foreground,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0.2,
+    ),
+    labelMedium: poppins.labelMedium?.copyWith(
+      fontSize: 12,
+      height: 1.25,
       color: muted,
       fontWeight: FontWeight.w500,
     ),
-    bodyLarge: poppins.bodyLarge?.copyWith(color: foreground),
-    bodyMedium: poppins.bodyMedium?.copyWith(color: foreground),
-    bodySmall: poppins.bodySmall?.copyWith(color: muted),
-    labelLarge: poppins.labelLarge?.copyWith(
-      color: foreground,
-      fontWeight: FontWeight.w600,
+    labelSmall: poppins.labelSmall?.copyWith(
+      fontSize: 11,
+      height: 1.2,
+      color: muted,
       letterSpacing: 0.5,
+      fontWeight: FontWeight.w500,
     ),
-    labelMedium: poppins.labelMedium?.copyWith(color: muted),
-    labelSmall: poppins.labelSmall?.copyWith(color: muted, letterSpacing: 1.0),
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Light theme
-// ─────────────────────────────────────────────────────────────────────────────
+MaterialStateProperty<Color?> _overlayFor(Color color) {
+  return MaterialStateProperty.resolveWith((states) {
+    if (states.contains(MaterialState.pressed)) {
+      return color.withOpacity(0.14);
+    }
+    if (states.contains(MaterialState.hovered)) {
+      return color.withOpacity(0.09);
+    }
+    if (states.contains(MaterialState.focused)) {
+      return color.withOpacity(0.12);
+    }
+    return null;
+  });
+}
+
+MaterialStateProperty<BorderSide?> _outlinedSideFor(
+  Color color,
+  Color disabled,
+) {
+  return MaterialStateProperty.resolveWith((states) {
+    if (states.contains(MaterialState.disabled)) {
+      return BorderSide(color: disabled);
+    }
+    return BorderSide(color: color.withOpacity(0.35));
+  });
+}
+
 ThemeData buildIsharaLightTheme() {
   final base = ThemeData.light(useMaterial3: true);
   final colorScheme = ColorScheme.fromSeed(
@@ -173,25 +253,56 @@ ThemeData buildIsharaLightTheme() {
     outline: IsharaColors.lightBorder,
   );
 
+  final textTheme = _buildTextTheme(
+    base.textTheme,
+    IsharaColors.lightForeground,
+    IsharaColors.mutedLight,
+  );
+
+  final disabledBg = IsharaColors.lightForeground.withOpacity(0.12);
+  final disabledFg = IsharaColors.lightForeground.withOpacity(0.38);
+
   return base.copyWith(
+    visualDensity: VisualDensity.adaptivePlatformDensity,
+    materialTapTargetSize: MaterialTapTargetSize.padded,
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
+        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.windows: FadeUpwardsPageTransitionsBuilder(),
+        TargetPlatform.linux: FadeUpwardsPageTransitionsBuilder(),
+      },
+    ),
     colorScheme: colorScheme,
     scaffoldBackgroundColor: IsharaColors.lightScaffold,
-    textTheme: _buildTextTheme(
-      base.textTheme,
-      IsharaColors.lightForeground,
-      IsharaColors.mutedLight,
-    ),
+    textTheme: textTheme,
     appBarTheme: AppBarTheme(
       elevation: 0,
       scrolledUnderElevation: 0,
       backgroundColor: Colors.transparent,
       foregroundColor: IsharaColors.lightForeground,
-      centerTitle: true,
+      centerTitle: false,
       systemOverlayStyle: SystemUiOverlayStyle.dark,
       titleTextStyle: GoogleFonts.poppins(
-        fontSize: 18,
-        fontWeight: FontWeight.w600,
+        fontSize: 20,
+        fontWeight: FontWeight.w700,
         color: IsharaColors.lightForeground,
+      ),
+    ),
+    iconButtonTheme: IconButtonThemeData(
+      style: ButtonStyle(
+        minimumSize: MaterialStateProperty.all(
+          const Size(IsharaColors.minTouchTarget, IsharaColors.minTouchTarget),
+        ),
+        padding: MaterialStateProperty.all(const EdgeInsets.all(10)),
+        overlayColor: _overlayFor(colorScheme.primary),
+        foregroundColor: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.disabled)) {
+            return disabledFg;
+          }
+          return IsharaColors.lightForeground;
+        }),
       ),
     ),
     cardTheme: CardThemeData(
@@ -199,30 +310,119 @@ ThemeData buildIsharaLightTheme() {
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: IsharaColors.cardRadius),
       margin: EdgeInsets.zero,
+      shadowColor: Colors.black.withOpacity(0.12),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: IsharaColors.tealLight,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        minimumSize: const Size(double.infinity, 52),
-        shape: RoundedRectangleBorder(borderRadius: IsharaColors.pillRadius),
-        textStyle: GoogleFonts.poppins(
-          fontWeight: FontWeight.w600,
-          fontSize: 15,
+      style: ButtonStyle(
+        minimumSize: MaterialStateProperty.all(const Size(double.infinity, 52)),
+        padding: MaterialStateProperty.all(
+          const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        ),
+        shape: MaterialStateProperty.all(
+          RoundedRectangleBorder(borderRadius: IsharaColors.pillRadius),
+        ),
+        elevation: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.disabled)) return 0;
+          if (states.contains(MaterialState.pressed)) return 0;
+          return 1.5;
+        }),
+        shadowColor: MaterialStateProperty.all(
+          IsharaColors.tealLight.withOpacity(0.35),
+        ),
+        backgroundColor: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.disabled)) return disabledBg;
+          return IsharaColors.tealLight;
+        }),
+        foregroundColor: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.disabled)) return disabledFg;
+          return Colors.white;
+        }),
+        overlayColor: _overlayFor(Colors.white),
+        textStyle: MaterialStateProperty.all(
+          GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 15),
+        ),
+      ),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: ButtonStyle(
+        minimumSize: MaterialStateProperty.all(const Size(double.infinity, 52)),
+        padding: MaterialStateProperty.all(
+          const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        ),
+        shape: MaterialStateProperty.all(
+          RoundedRectangleBorder(borderRadius: IsharaColors.pillRadius),
+        ),
+        backgroundColor: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.disabled)) return disabledBg;
+          return colorScheme.primary;
+        }),
+        foregroundColor: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.disabled)) return disabledFg;
+          return colorScheme.onPrimary;
+        }),
+        overlayColor: _overlayFor(Colors.white),
+        textStyle: MaterialStateProperty.all(
+          GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 15),
+        ),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: ButtonStyle(
+        minimumSize: MaterialStateProperty.all(const Size(double.infinity, 52)),
+        padding: MaterialStateProperty.all(
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        ),
+        shape: MaterialStateProperty.all(
+          RoundedRectangleBorder(borderRadius: IsharaColors.pillRadius),
+        ),
+        side: _outlinedSideFor(colorScheme.primary, colorScheme.outline),
+        foregroundColor: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.disabled)) return disabledFg;
+          return colorScheme.primary;
+        }),
+        overlayColor: _overlayFor(colorScheme.primary),
+        textStyle: MaterialStateProperty.all(
+          GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 14),
         ),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(
-        foregroundColor: IsharaColors.tealLight,
-        textStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+      style: ButtonStyle(
+        minimumSize: MaterialStateProperty.all(
+          const Size(IsharaColors.minTouchTarget, IsharaColors.minTouchTarget),
+        ),
+        padding: MaterialStateProperty.all(
+          const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        ),
+        foregroundColor: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.disabled)) return disabledFg;
+          return IsharaColors.tealLight;
+        }),
+        overlayColor: _overlayFor(IsharaColors.tealLight),
+        textStyle: MaterialStateProperty.all(
+          GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 14),
+        ),
       ),
+    ),
+    listTileTheme: const ListTileThemeData(
+      minVerticalPadding: IsharaSpacing.xs,
+      minLeadingWidth: 28,
+      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: IsharaColors.lightCard,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      floatingLabelBehavior: FloatingLabelBehavior.auto,
+      errorStyle: GoogleFonts.poppins(
+        fontSize: 12,
+        color: colorScheme.error,
+        fontWeight: FontWeight.w600,
+      ),
+      labelStyle: GoogleFonts.poppins(
+        fontSize: 14,
+        color: IsharaColors.mutedLight,
+      ),
       border: OutlineInputBorder(
         borderRadius: IsharaColors.inputRadius,
         borderSide: BorderSide(color: IsharaColors.lightBorder),
@@ -235,10 +435,41 @@ ThemeData buildIsharaLightTheme() {
         borderRadius: IsharaColors.inputRadius,
         borderSide: BorderSide(color: IsharaColors.tealLight, width: 2),
       ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: IsharaColors.inputRadius,
+        borderSide: BorderSide(color: colorScheme.error, width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: IsharaColors.inputRadius,
+        borderSide: BorderSide(color: colorScheme.error),
+      ),
       hintStyle: GoogleFonts.poppins(
         color: IsharaColors.mutedLight,
         fontSize: 14,
       ),
+    ),
+    snackBarTheme: SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      contentTextStyle: textTheme.bodyMedium?.copyWith(color: Colors.white),
+      backgroundColor: const Color(0xFF0F172A),
+      actionTextColor: IsharaColors.orangeLight,
+    ),
+    progressIndicatorTheme: ProgressIndicatorThemeData(
+      color: colorScheme.primary,
+      linearTrackColor: colorScheme.primary.withOpacity(0.14),
+      circularTrackColor: colorScheme.primary.withOpacity(0.12),
+      linearMinHeight: 6,
+      refreshBackgroundColor: colorScheme.surface,
+    ),
+    tabBarTheme: TabBarThemeData(
+      labelStyle: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+      unselectedLabelStyle: textTheme.titleSmall,
+      labelColor: colorScheme.primary,
+      unselectedLabelColor: IsharaColors.mutedLight,
+      dividerColor: Colors.transparent,
+      indicatorSize: TabBarIndicatorSize.tab,
     ),
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
       selectedItemColor: IsharaColors.tealLight,
@@ -249,17 +480,25 @@ ThemeData buildIsharaLightTheme() {
     chipTheme: base.chipTheme.copyWith(
       backgroundColor: IsharaColors.lightCard,
       selectedColor: IsharaColors.tealLight.withOpacity(0.12),
+      side: BorderSide(color: IsharaColors.tealLight.withOpacity(0.22)),
+      shape: RoundedRectangleBorder(borderRadius: IsharaColors.pillRadius),
+      labelStyle: textTheme.labelMedium,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     ),
     dividerTheme: const DividerThemeData(
       color: IsharaColors.lightBorder,
       thickness: 1,
     ),
+    tooltipTheme: TooltipThemeData(
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F172A),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      textStyle: textTheme.bodySmall?.copyWith(color: Colors.white),
+    ),
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Dark theme
-// ─────────────────────────────────────────────────────────────────────────────
 ThemeData buildIsharaDarkTheme() {
   final base = ThemeData.dark(useMaterial3: true);
   final colorScheme = ColorScheme.fromSeed(
@@ -274,25 +513,56 @@ ThemeData buildIsharaDarkTheme() {
     outline: IsharaColors.darkBorder,
   );
 
+  final textTheme = _buildTextTheme(
+    base.textTheme,
+    IsharaColors.darkForeground,
+    IsharaColors.mutedDark,
+  );
+
+  final disabledBg = IsharaColors.darkForeground.withOpacity(0.12);
+  final disabledFg = IsharaColors.darkForeground.withOpacity(0.38);
+
   return base.copyWith(
+    visualDensity: VisualDensity.adaptivePlatformDensity,
+    materialTapTargetSize: MaterialTapTargetSize.padded,
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
+        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.windows: FadeUpwardsPageTransitionsBuilder(),
+        TargetPlatform.linux: FadeUpwardsPageTransitionsBuilder(),
+      },
+    ),
     colorScheme: colorScheme,
     scaffoldBackgroundColor: IsharaColors.darkScaffold,
-    textTheme: _buildTextTheme(
-      base.textTheme,
-      IsharaColors.darkForeground,
-      IsharaColors.mutedDark,
-    ),
+    textTheme: textTheme,
     appBarTheme: AppBarTheme(
       elevation: 0,
       scrolledUnderElevation: 0,
       backgroundColor: Colors.transparent,
       foregroundColor: IsharaColors.darkForeground,
-      centerTitle: true,
+      centerTitle: false,
       systemOverlayStyle: SystemUiOverlayStyle.light,
       titleTextStyle: GoogleFonts.poppins(
-        fontSize: 18,
-        fontWeight: FontWeight.w600,
+        fontSize: 20,
+        fontWeight: FontWeight.w700,
         color: IsharaColors.darkForeground,
+      ),
+    ),
+    iconButtonTheme: IconButtonThemeData(
+      style: ButtonStyle(
+        minimumSize: MaterialStateProperty.all(
+          const Size(IsharaColors.minTouchTarget, IsharaColors.minTouchTarget),
+        ),
+        padding: MaterialStateProperty.all(const EdgeInsets.all(10)),
+        overlayColor: _overlayFor(colorScheme.primary),
+        foregroundColor: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.disabled)) {
+            return disabledFg;
+          }
+          return IsharaColors.darkForeground;
+        }),
       ),
     ),
     cardTheme: CardThemeData(
@@ -300,30 +570,119 @@ ThemeData buildIsharaDarkTheme() {
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: IsharaColors.cardRadius),
       margin: EdgeInsets.zero,
+      shadowColor: Colors.black.withOpacity(0.45),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: IsharaColors.tealDark,
-        foregroundColor: Colors.black,
-        elevation: 0,
-        minimumSize: const Size(double.infinity, 52),
-        shape: RoundedRectangleBorder(borderRadius: IsharaColors.pillRadius),
-        textStyle: GoogleFonts.poppins(
-          fontWeight: FontWeight.w600,
-          fontSize: 15,
+      style: ButtonStyle(
+        minimumSize: MaterialStateProperty.all(const Size(double.infinity, 52)),
+        padding: MaterialStateProperty.all(
+          const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        ),
+        shape: MaterialStateProperty.all(
+          RoundedRectangleBorder(borderRadius: IsharaColors.pillRadius),
+        ),
+        elevation: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.disabled)) return 0;
+          if (states.contains(MaterialState.pressed)) return 0;
+          return 1.5;
+        }),
+        shadowColor: MaterialStateProperty.all(
+          IsharaColors.tealDark.withOpacity(0.45),
+        ),
+        backgroundColor: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.disabled)) return disabledBg;
+          return IsharaColors.tealDark;
+        }),
+        foregroundColor: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.disabled)) return disabledFg;
+          return Colors.black;
+        }),
+        overlayColor: _overlayFor(Colors.black),
+        textStyle: MaterialStateProperty.all(
+          GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 15),
+        ),
+      ),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: ButtonStyle(
+        minimumSize: MaterialStateProperty.all(const Size(double.infinity, 52)),
+        padding: MaterialStateProperty.all(
+          const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        ),
+        shape: MaterialStateProperty.all(
+          RoundedRectangleBorder(borderRadius: IsharaColors.pillRadius),
+        ),
+        backgroundColor: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.disabled)) return disabledBg;
+          return colorScheme.primary;
+        }),
+        foregroundColor: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.disabled)) return disabledFg;
+          return colorScheme.onPrimary;
+        }),
+        overlayColor: _overlayFor(Colors.black),
+        textStyle: MaterialStateProperty.all(
+          GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 15),
+        ),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: ButtonStyle(
+        minimumSize: MaterialStateProperty.all(const Size(double.infinity, 52)),
+        padding: MaterialStateProperty.all(
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        ),
+        shape: MaterialStateProperty.all(
+          RoundedRectangleBorder(borderRadius: IsharaColors.pillRadius),
+        ),
+        side: _outlinedSideFor(colorScheme.primary, colorScheme.outline),
+        foregroundColor: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.disabled)) return disabledFg;
+          return colorScheme.primary;
+        }),
+        overlayColor: _overlayFor(colorScheme.primary),
+        textStyle: MaterialStateProperty.all(
+          GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 14),
         ),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(
-        foregroundColor: IsharaColors.tealDark,
-        textStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+      style: ButtonStyle(
+        minimumSize: MaterialStateProperty.all(
+          const Size(IsharaColors.minTouchTarget, IsharaColors.minTouchTarget),
+        ),
+        padding: MaterialStateProperty.all(
+          const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        ),
+        foregroundColor: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.disabled)) return disabledFg;
+          return IsharaColors.tealDark;
+        }),
+        overlayColor: _overlayFor(IsharaColors.tealDark),
+        textStyle: MaterialStateProperty.all(
+          GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 14),
+        ),
       ),
+    ),
+    listTileTheme: const ListTileThemeData(
+      minVerticalPadding: IsharaSpacing.xs,
+      minLeadingWidth: 28,
+      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: IsharaColors.darkCard,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      floatingLabelBehavior: FloatingLabelBehavior.auto,
+      errorStyle: GoogleFonts.poppins(
+        fontSize: 12,
+        color: colorScheme.error,
+        fontWeight: FontWeight.w600,
+      ),
+      labelStyle: GoogleFonts.poppins(
+        fontSize: 14,
+        color: IsharaColors.mutedDark,
+      ),
       border: OutlineInputBorder(
         borderRadius: IsharaColors.inputRadius,
         borderSide: const BorderSide(color: IsharaColors.darkBorder),
@@ -336,10 +695,41 @@ ThemeData buildIsharaDarkTheme() {
         borderRadius: IsharaColors.inputRadius,
         borderSide: const BorderSide(color: IsharaColors.tealDark, width: 2),
       ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: IsharaColors.inputRadius,
+        borderSide: BorderSide(color: colorScheme.error, width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: IsharaColors.inputRadius,
+        borderSide: BorderSide(color: colorScheme.error),
+      ),
       hintStyle: GoogleFonts.poppins(
         color: IsharaColors.mutedDark,
         fontSize: 14,
       ),
+    ),
+    snackBarTheme: SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      contentTextStyle: textTheme.bodyMedium?.copyWith(color: Colors.white),
+      backgroundColor: const Color(0xFF09101D),
+      actionTextColor: IsharaColors.orangeDark,
+    ),
+    progressIndicatorTheme: ProgressIndicatorThemeData(
+      color: colorScheme.primary,
+      linearTrackColor: colorScheme.primary.withOpacity(0.18),
+      circularTrackColor: colorScheme.primary.withOpacity(0.16),
+      linearMinHeight: 6,
+      refreshBackgroundColor: colorScheme.surface,
+    ),
+    tabBarTheme: TabBarThemeData(
+      labelStyle: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+      unselectedLabelStyle: textTheme.titleSmall,
+      labelColor: colorScheme.primary,
+      unselectedLabelColor: IsharaColors.mutedDark,
+      dividerColor: Colors.transparent,
+      indicatorSize: TabBarIndicatorSize.tab,
     ),
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
       selectedItemColor: IsharaColors.tealDark,
@@ -351,10 +741,21 @@ ThemeData buildIsharaDarkTheme() {
     chipTheme: base.chipTheme.copyWith(
       backgroundColor: IsharaColors.darkCard,
       selectedColor: IsharaColors.tealDark.withOpacity(0.2),
+      side: BorderSide(color: IsharaColors.tealDark.withOpacity(0.3)),
+      shape: RoundedRectangleBorder(borderRadius: IsharaColors.pillRadius),
+      labelStyle: textTheme.labelMedium,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     ),
     dividerTheme: const DividerThemeData(
       color: IsharaColors.darkBorder,
       thickness: 1,
+    ),
+    tooltipTheme: TooltipThemeData(
+      decoration: BoxDecoration(
+        color: const Color(0xFF0B1220),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      textStyle: textTheme.bodySmall?.copyWith(color: Colors.white),
     ),
   );
 }

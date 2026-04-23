@@ -19,8 +19,21 @@ final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
 // ── Core services ───────────────────────────────────────────────────
 final apiClientProvider = Provider<ApiClient>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
-  final savedUrl = prefs.getString('server_url');
-  return ApiClient(prefs, baseUrl: savedUrl);
+  const envBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
+  final savedUrl = prefs.getString('server_url')?.trim();
+  final isStaleLocalUrl =
+      savedUrl != null &&
+      (savedUrl.contains('10.0.2.2') || savedUrl.contains('localhost'));
+
+  // Cloud builds should always prefer --dart-define API_BASE_URL.
+  final effectiveBaseUrl =
+      envBaseUrl.trim().isNotEmpty
+          ? envBaseUrl
+          : (!isStaleLocalUrl && savedUrl != null && savedUrl.isNotEmpty
+              ? savedUrl
+              : null);
+
+  return ApiClient(prefs, baseUrl: effectiveBaseUrl);
 });
 
 final authServiceProvider = Provider<AuthService>((ref) {

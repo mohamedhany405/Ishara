@@ -47,6 +47,9 @@ const UserSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
+UserSchema.index({ role: 1, createdAt: -1 });
+UserSchema.index({ isVerified: 1, createdAt: -1 });
+
 // Prevent model overwrite error
 const User = mongoose.models.User || mongoose.model("User", UserSchema);
 

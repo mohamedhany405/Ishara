@@ -12,14 +12,15 @@ import 'image_labeling_service.dart'; // our app-wide DetectedObject
 /// headphones, bags, tissue boxes etc. that the general ImageNet labeler misses.
 class ObjectDetectionService {
   ObjectDetectionService({mlkit.ObjectDetector? detector})
-      : _detector = detector ??
-            mlkit.ObjectDetector(
-              options: mlkit.ObjectDetectorOptions(
-                mode: mlkit.DetectionMode.single,
-                classifyObjects: true,
-                multipleObjects: true,
-              ),
-            );
+    : _detector =
+          detector ??
+          mlkit.ObjectDetector(
+            options: mlkit.ObjectDetectorOptions(
+              mode: mlkit.DetectionMode.single,
+              classifyObjects: true,
+              multipleObjects: true,
+            ),
+          );
 
   final mlkit.ObjectDetector _detector;
 
@@ -35,6 +36,8 @@ class ObjectDetectionService {
           DetectedObject(
             label: label.text,
             confidence: label.confidence,
+            boundingBox: obj.boundingBox,
+            source: DetectionSource.objectDetector,
           ),
         );
       }
@@ -49,8 +52,9 @@ class ObjectDetectionService {
       }
     }
 
-    final deduped = map.values.toList()
-      ..sort((a, b) => b.confidence.compareTo(a.confidence));
+    final deduped =
+        map.values.toList()
+          ..sort((a, b) => b.confidence.compareTo(a.confidence));
     return deduped;
   }
 

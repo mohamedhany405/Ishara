@@ -64,6 +64,8 @@ dependencies:
 
   # Media & device capabilities
   video_player: ^2.9.2
+  youtube_player_flutter: ^9.1.1
+  visibility_detector: ^0.4.0+2
   camera: ^0.11.0+2
   permission_handler: ^11.3.1
   image_picker: ^1.1.2
@@ -86,6 +88,13 @@ dependencies:
   # URL launching & local storage
   url_launcher: ^6.1.11
   shared_preferences: ^2.2.2
+
+  # On-device pose landmarks for offline sign translation
+  google_mlkit_pose_detection: ^0.14.0
+
+  # ML Kit image labeling & object detection
+  google_mlkit_image_labeling: ^0.14.0
+  google_mlkit_object_detection: ^0.15.0
 
   # Local storage for offline cache
   hive: ^2.2.3
@@ -110,7 +119,11 @@ dev_dependencies:
 flutter:
   assets:
     - assets/images/ishara_app_logo.png
+    - assets/images/splash_logo.png
     - assets/models/
+    - assets/models/asl_v6.tflite
+    - assets/models/label_map_v6.json
+    - assets/models/manifest.json
   uses-material-design: true
 
   # Custom fonts (uncomment when assets/fonts/ are present)

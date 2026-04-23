@@ -11,6 +11,9 @@ const ContactMessageSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
+ContactMessageSchema.index({ read: 1, createdAt: -1 });
+ContactMessageSchema.index({ email: 1, createdAt: -1 });
+
 const ContactMessage =
     mongoose.models.ContactMessage ||
     mongoose.model("ContactMessage", ContactMessageSchema);

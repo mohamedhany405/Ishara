@@ -19,6 +19,7 @@ class IsharaCard extends StatelessWidget {
     this.margin = EdgeInsets.zero,
     this.onTap,
     this.borderRadius,
+    this.semanticsLabel,
   });
 
   final Widget child;
@@ -26,6 +27,7 @@ class IsharaCard extends StatelessWidget {
   final EdgeInsetsGeometry margin;
   final VoidCallback? onTap;
   final BorderRadius? borderRadius;
+  final String? semanticsLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -43,16 +45,26 @@ class IsharaCard extends StatelessWidget {
     );
 
     if (onTap != null) {
-      card = Material(
-        color: Colors.transparent,
-        borderRadius: br,
-        child: InkWell(
-          onTap: onTap,
+      card = Semantics(
+        button: true,
+        label: semanticsLabel,
+        child: Material(
+          color: Colors.transparent,
           borderRadius: br,
-          splashColor: (isDark ? IsharaColors.tealDark : IsharaColors.tealLight)
-              .withOpacity(0.08),
-          highlightColor: Colors.transparent,
-          child: card,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: br,
+            mouseCursor: SystemMouseCursors.click,
+            splashColor: (isDark
+                    ? IsharaColors.tealDark
+                    : IsharaColors.tealLight)
+                .withOpacity(0.1),
+            highlightColor: (isDark
+                    ? IsharaColors.tealDark
+                    : IsharaColors.tealLight)
+                .withOpacity(0.04),
+            child: card,
+          ),
         ),
       );
     }

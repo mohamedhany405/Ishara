@@ -1,0 +1,52 @@
+{
+  "model_file": "asl_v6.tflite",
+  "label_map_file": "label_map_v6.json",
+  "input_shape": [
+    1,
+    30,
+    1692
+  ],
+  "output_shape": [
+    1,
+    12
+  ],
+  "sequence_length": 30,
+  "num_keypoints": 1692,
+  "labels": [
+    "أين",
+    "اب",
+    "ام",
+    "انا",
+    "دكتور",
+    "شرطة",
+    "شكرا",
+    "لا",
+    "ماء",
+    "مرحبا",
+    "مساعده",
+    "نعم"
+  ],
+  "quantized": false,
+  "keypoint_layout": {
+    "pose": {
+      "count": 33,
+      "components": 4,
+      "total": 132
+    },
+    "face": {
+      "count": 468,
+      "components": 3,
+      "total": 1404
+    },
+    "left_hand": {
+      "count": 21,
+      "components": 3,
+      "total": 63
+    },
+    "right_hand": {
+      "count": 21,
+      "components": 3,
+      "total": 63
+    }
+  }
+}

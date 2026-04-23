@@ -11,6 +11,7 @@ import '../../../core/settings/app_settings_controller.dart';
 import '../../../core/settings/translations.dart';
 import '../../../core/theme/ishara_theme.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/widgets/ishara_feedback.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -105,10 +106,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 onPressed: () => ctx.pop(false),
                 child: Text(s.cancel),
               ),
-              TextButton(
-                onPressed: () => ctx.pop(true),
-                child: Text(s.logout),
-              ),
+              TextButton(onPressed: () => ctx.pop(true), child: Text(s.logout)),
             ],
           ),
     );
@@ -152,33 +150,36 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               delegate: SliverChildListDelegate([
                 // ── User info / edit card ──────────────────────────────
                 _SectionCard(
-                    isDark: isDark,
-                    delay: 80.ms,
-                    child:
-                        _isEditing
-                            ? _EditProfileForm(
-                              nameCtrl: _nameCtrl,
-                              selectedDisability: _selectedDisability,
-                              isSaving: _isSaving,
-                              teal: teal,
-                              isDark: isDark,
-                              theme: theme,
-                              onDisabilityChanged:
-                                  (v) =>
-                                      setState(() => _selectedDisability = v),
-                              onSave: _saveProfile,
-                              onCancel:
-                                  () => setState(() => _isEditing = false),
-                            )
-                            : _UserInfoDisplay(
-                              user: user,
-                              teal: teal,
-                              orange: orange,
-                              isDark: isDark,
-                              theme: theme,
-                              onEdit: () => _startEditing(user),
-                            ),
-                  ),
+                  isDark: isDark,
+                  delay: 80.ms,
+                  child:
+                      _isEditing
+                          ? _EditProfileForm(
+                            nameCtrl: _nameCtrl,
+                            selectedDisability: _selectedDisability,
+                            isSaving: _isSaving,
+                            teal: teal,
+                            isDark: isDark,
+                            theme: theme,
+                            onDisabilityChanged:
+                                (v) => setState(() => _selectedDisability = v),
+                            onSave: _saveProfile,
+                            onCancel: () => setState(() => _isEditing = false),
+                          )
+                          : user == null
+                          ? _GuestProfilePrompt(
+                            teal: teal,
+                            onTap: () => context.go(AppRoute.login),
+                          )
+                          : _UserInfoDisplay(
+                            user: user,
+                            teal: teal,
+                            orange: orange,
+                            isDark: isDark,
+                            theme: theme,
+                            onEdit: () => _startEditing(user),
+                          ),
+                ),
 
                 const SizedBox(height: 12),
 
@@ -330,22 +331,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
                 // ── Logout ─────────────────────────────────────────────
                 const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: _logout,
-                      icon: const Icon(Icons.logout_rounded, size: 18),
-                      label: Text(s.logout),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.redAccent,
-                        side: const BorderSide(color: Colors.redAccent),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: IsharaColors.cardRadius,
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _logout,
+                    icon: const Icon(Icons.logout_rounded, size: 18),
+                    label: Text(s.logout),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.redAccent,
+                      side: const BorderSide(color: Colors.redAccent),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: IsharaColors.cardRadius,
                       ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
-                  ).animate().fadeIn(delay: 500.ms, duration: 300.ms),
+                  ),
+                ).animate().fadeIn(delay: 500.ms, duration: 300.ms),
               ]),
             ),
           ),
@@ -396,73 +397,79 @@ class _ProfileHeader extends ConsumerWidget {
           // Avatar with gradient ring
           GestureDetector(
             onTap: onAvatarTap,
-            child: Stack(
-              alignment: Alignment.bottomRight,
-              children: [
-                Container(
-                      width: 88,
-                      height: 88,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: isharaDiagonalGradient(dark: isDark),
-                        boxShadow: [
-                          BoxShadow(
-                            color: teal.withOpacity(0.35),
-                            blurRadius: 20,
-                            spreadRadius: 2,
+            child: Semantics(
+              button: onAvatarTap != null,
+              label: 'Profile picture',
+              hint:
+                  onAvatarTap != null ? 'Tap to change profile picture' : null,
+              child: Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  Container(
+                        width: 88,
+                        height: 88,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: isharaDiagonalGradient(dark: isDark),
+                          boxShadow: [
+                            BoxShadow(
+                              color: teal.withOpacity(0.35),
+                              blurRadius: 20,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(3),
+                          child: CircleAvatar(
+                            backgroundColor:
+                                isDark ? const Color(0xFF1E293B) : Colors.white,
+                            backgroundImage:
+                                user != null && user!.profilePic.isNotEmpty
+                                    ? NetworkImage(user!.profilePic)
+                                    : null,
+                            child:
+                                user == null || user!.profilePic.isEmpty
+                                    ? Icon(
+                                      Icons.person_rounded,
+                                      size: 44,
+                                      color: teal,
+                                    )
+                                    : null,
                           ),
-                        ],
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(3),
-                        child: CircleAvatar(
-                          backgroundColor:
-                              isDark ? const Color(0xFF1E293B) : Colors.white,
-                          backgroundImage:
-                              user != null && user!.profilePic.isNotEmpty
-                                  ? NetworkImage(user!.profilePic)
-                                  : null,
-                          child:
-                              user == null || user!.profilePic.isEmpty
-                                  ? Icon(
-                                    Icons.person_rounded,
-                                    size: 44,
-                                    color: teal,
-                                  )
-                                  : null,
+                        ),
+                      )
+                      .animate()
+                      .scale(
+                        begin: const Offset(0.6, 0.6),
+                        end: const Offset(1, 1),
+                        duration: 500.ms,
+                        curve: Curves.elasticOut,
+                      )
+                      .fadeIn(duration: 300.ms),
+                  if (onAvatarTap != null)
+                    Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: teal,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color:
+                              isDark
+                                  ? const Color(0xFF0D2137)
+                                  : const Color(0xFFE0F7F5),
+                          width: 2,
                         ),
                       ),
-                    )
-                    .animate()
-                    .scale(
-                      begin: const Offset(0.6, 0.6),
-                      end: const Offset(1, 1),
-                      duration: 500.ms,
-                      curve: Curves.elasticOut,
-                    )
-                    .fadeIn(duration: 300.ms),
-                if (onAvatarTap != null)
-                  Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: teal,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color:
-                            isDark
-                                ? const Color(0xFF0D2137)
-                                : const Color(0xFFE0F7F5),
-                        width: 2,
+                      child: const Icon(
+                        Icons.camera_alt_rounded,
+                        size: 14,
+                        color: Colors.white,
                       ),
                     ),
-                    child: const Icon(
-                      Icons.camera_alt_rounded,
-                      size: 14,
-                      color: Colors.white,
-                    ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
 
@@ -592,6 +599,26 @@ class _UserInfoDisplay extends ConsumerWidget {
           teal: teal,
         ),
       ],
+    );
+  }
+}
+
+class _GuestProfilePrompt extends ConsumerWidget {
+  const _GuestProfilePrompt({required this.teal, required this.onTap});
+
+  final Color teal;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = t(ref);
+    return IsharaEmptyState(
+      icon: Icons.person_outline_rounded,
+      title: s.profileTitle,
+      message: s.guestMessage,
+      ctaLabel: s.guestLogin,
+      onCtaTap: onTap,
+      maxWidth: 420,
     );
   }
 }
@@ -938,6 +965,9 @@ class _LangChip extends StatelessWidget {
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
+        constraints: const BoxConstraints(
+          minHeight: IsharaColors.minTouchTarget,
+        ),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
           color: selected ? teal : teal.withOpacity(0.08),
@@ -983,48 +1013,54 @@ class _ActionRow extends StatelessWidget {
                 HapticFeedback.selectionClick();
                 onTap!();
               },
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: teal.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(12),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          minHeight: IsharaColors.minTouchTarget,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: teal.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: teal, size: 20),
             ),
-            child: Icon(icon, color: teal, size: 20),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
                   ),
-                ),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color:
-                        isDark
-                            ? IsharaColors.mutedDark
-                            : IsharaColors.mutedLight,
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color:
+                          isDark
+                              ? IsharaColors.mutedDark
+                              : IsharaColors.mutedLight,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          if (onTap != null)
-            Icon(
-              Icons.chevron_right_rounded,
-              color: isDark ? IsharaColors.mutedDark : IsharaColors.mutedLight,
-            ),
-        ],
+            if (onTap != null)
+              Icon(
+                Icons.chevron_right_rounded,
+                color:
+                    isDark ? IsharaColors.mutedDark : IsharaColors.mutedLight,
+              ),
+          ],
+        ),
       ),
     );
   }

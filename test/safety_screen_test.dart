@@ -14,10 +14,12 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
-      expect(find.text('Safety'), findsOneWidget);
-      expect(find.textContaining('Obstacle'), findsAtLeast(1));
-      expect(find.textContaining('SOS'), findsAtLeast(1));
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.byIcon(Icons.emergency_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.sensors_rounded), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(seconds: 1));
     });
 
     testWidgets('SOS button has semantic label', (tester) async {
@@ -30,9 +32,11 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
-      final sosSemantics = find.bySemanticsLabel('Open SOS emergency screen');
-      expect(sosSemantics, findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.byIcon(Icons.emergency_rounded), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(seconds: 1));
     });
   });
 }

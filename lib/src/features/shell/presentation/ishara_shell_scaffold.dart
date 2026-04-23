@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -72,9 +74,10 @@ class IsharaShellScaffold extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final tabs = _buildTabs(t(ref));
     final current = _currentIndex(context, tabs);
+    final bottomInset = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
           // Page content
@@ -84,7 +87,7 @@ class IsharaShellScaffold extends ConsumerWidget {
           Positioned(
             left: 16,
             right: 16,
-            bottom: 16,
+            bottom: bottomInset > 8 ? bottomInset : 12,
             child: _FloatingNavBar(
                   tabs: tabs,
                   currentIndex: current,
@@ -124,48 +127,60 @@ class _FloatingNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 66,
-      decoration: BoxDecoration(
-        color:
-            isDark
-                ? const Color(0xFF1E293B).withOpacity(0.92)
-                : Colors.white.withOpacity(0.92),
+    return Semantics(
+      container: true,
+      label: 'Primary navigation',
+      child: ClipRRect(
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(
-          color: isDark ? IsharaColors.darkBorder : IsharaColors.lightBorder,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color:
-                isDark
-                    ? Colors.black.withOpacity(0.4)
-                    : Colors.black.withOpacity(0.10),
-            blurRadius: 24,
-            spreadRadius: 0,
-            offset: const Offset(0, 4),
-          ),
-          // teal glow under the bar
-          BoxShadow(
-            color: (isDark ? IsharaColors.tealDark : IsharaColors.tealLight)
-                .withOpacity(0.08),
-            blurRadius: 32,
-            spreadRadius: 0,
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: List.generate(tabs.length, (i) {
-          return Flexible(
-            child: _NavItem(
-              tab: tabs[i],
-              selected: currentIndex == i,
-              isDark: isDark,
-              onTap: () => onTap(i),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: Container(
+            height: 68,
+            decoration: BoxDecoration(
+              color:
+                  isDark
+                      ? const Color(0xFF1E293B).withOpacity(0.82)
+                      : Colors.white.withOpacity(0.86),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(
+                color:
+                    isDark ? IsharaColors.darkBorder : IsharaColors.lightBorder,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color:
+                      isDark
+                          ? Colors.black.withOpacity(0.4)
+                          : Colors.black.withOpacity(0.1),
+                  blurRadius: 24,
+                  spreadRadius: 0,
+                  offset: const Offset(0, 4),
+                ),
+                BoxShadow(
+                  color: (isDark
+                          ? IsharaColors.tealDark
+                          : IsharaColors.tealLight)
+                      .withOpacity(0.08),
+                  blurRadius: 32,
+                  spreadRadius: 0,
+                ),
+              ],
             ),
-          );
-        }),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: List.generate(tabs.length, (i) {
+                return Flexible(
+                  child: _NavItem(
+                    tab: tabs[i],
+                    selected: currentIndex == i,
+                    isDark: isDark,
+                    onTap: () => onTap(i),
+                  ),
+                );
+              }),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -192,6 +207,8 @@ class _NavItemState extends State<_NavItem>
     with SingleTickerProviderStateMixin {
   late final AnimationController _scaleCtrl;
   late final Animation<double> _scaleAnim;
+  bool _hovered = false;
+  bool _focused = false;
 
   @override
   void initState() {
@@ -219,80 +236,93 @@ class _NavItemState extends State<_NavItem>
     final orange =
         widget.isDark ? IsharaColors.orangeDark : IsharaColors.orangeLight;
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: (_) => _scaleCtrl.forward(),
-      onTapUp: (_) {
-        _scaleCtrl.reverse();
-        widget.onTap();
-      },
-      onTapCancel: () => _scaleCtrl.reverse(),
-      child: ScaleTransition(
-        scale: _scaleAnim,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeInOut,
-          width: 60,
-          height: 56,
-          decoration: BoxDecoration(
-            color:
-                widget.selected ? teal.withOpacity(0.12) : Colors.transparent,
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Icon with gradient on selected state
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 200),
-                transitionBuilder:
-                    (child, animation) =>
-                        ScaleTransition(scale: animation, child: child),
-                child:
+    return Semantics(
+      button: true,
+      selected: widget.selected,
+      label: widget.tab.label,
+      child: FocusableActionDetector(
+        onShowHoverHighlight: (value) => setState(() => _hovered = value),
+        onShowFocusHighlight: (value) => setState(() => _focused = value),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown: (_) => _scaleCtrl.forward(),
+          onTapUp: (_) {
+            _scaleCtrl.reverse();
+            widget.onTap();
+          },
+          onTapCancel: () => _scaleCtrl.reverse(),
+          child: ScaleTransition(
+            scale: _scaleAnim,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeInOut,
+              width: 64,
+              height: 58,
+              decoration: BoxDecoration(
+                color:
                     widget.selected
-                        ? ShaderMask(
-                          key: ValueKey('sel_${widget.tab.path}'),
-                          blendMode: BlendMode.srcIn,
-                          shaderCallback:
-                              (b) => LinearGradient(
-                                colors: [teal, orange],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ).createShader(
-                                Rect.fromLTWH(0, 0, b.width, b.height),
-                              ),
-                          child: Icon(widget.tab.activeIcon, size: 24),
-                        )
-                        : Icon(
-                          key: ValueKey('unsel_${widget.tab.path}'),
-                          widget.tab.icon,
-                          size: 22,
-                          color:
-                              widget.isDark
+                        ? teal.withOpacity(0.14)
+                        : (_hovered
+                            ? teal.withOpacity(0.06)
+                            : Colors.transparent),
+                borderRadius: BorderRadius.circular(18),
+                border:
+                    _focused
+                        ? Border.all(color: teal.withOpacity(0.75), width: 1.5)
+                        : null,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    transitionBuilder:
+                        (child, animation) =>
+                            ScaleTransition(scale: animation, child: child),
+                    child:
+                        widget.selected
+                            ? ShaderMask(
+                              key: ValueKey('sel_${widget.tab.path}'),
+                              blendMode: BlendMode.srcIn,
+                              shaderCallback:
+                                  (b) => LinearGradient(
+                                    colors: [teal, orange],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ).createShader(
+                                    Rect.fromLTWH(0, 0, b.width, b.height),
+                                  ),
+                              child: Icon(widget.tab.activeIcon, size: 24),
+                            )
+                            : Icon(
+                              key: ValueKey('unsel_${widget.tab.path}'),
+                              widget.tab.icon,
+                              size: 22,
+                              color:
+                                  widget.isDark
+                                      ? IsharaColors.mutedDark
+                                      : IsharaColors.mutedLight,
+                            ),
+                  ),
+                  const SizedBox(height: 3),
+                  AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 200),
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight:
+                          widget.selected ? FontWeight.w700 : FontWeight.w400,
+                      color:
+                          widget.selected
+                              ? teal
+                              : (widget.isDark
                                   ? IsharaColors.mutedDark
-                                  : IsharaColors.mutedLight,
-                        ),
+                                  : IsharaColors.mutedLight),
+                    ),
+                    child: Text(widget.tab.label),
+                  ),
+                ],
               ),
-
-              const SizedBox(height: 3),
-
-              // Label
-              AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 200),
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight:
-                      widget.selected ? FontWeight.w700 : FontWeight.w400,
-                  color:
-                      widget.selected
-                          ? teal
-                          : (widget.isDark
-                              ? IsharaColors.mutedDark
-                              : IsharaColors.mutedLight),
-                ),
-                child: Text(widget.tab.label),
-              ),
-            ],
+            ),
           ),
         ),
       ),
