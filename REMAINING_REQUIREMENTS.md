@@ -280,6 +280,91 @@ IDs, Facebook App ID/Secret, and a `/api/auth/social` route.
 
 ## D. Build / run notes
 
+### D0. Claude Code + skills setup (required on a new device)
+This project was authored with Claude Code and depends on a number of
+plugin "skills" for the agentic workflows (planning, sub-agents, UI/UX
+review, Vercel deploys, etc.). If you check this repo out on a new
+machine and want to keep iterating with Claude in the same way, you must
+install the following on that machine:
+
+1. **Claude Code CLI / IDE extension**
+   - macOS / Linux:
+     ```bash
+     curl -fsSL https://claude.ai/install.sh | sh
+     ```
+   - Windows (PowerShell, Admin):
+     ```powershell
+     irm https://claude.ai/install.ps1 | iex
+     ```
+   - VS Code: install the "Claude Code" extension from the Marketplace
+     (the project was edited with this extension active).
+   - Sign in with the same Anthropic account that has access to your
+     plan (Pro / Team / Enterprise) so the skills below resolve.
+
+2. **Skills** referenced during this build (install via the
+   `/skill install <name>` command inside Claude Code, or accept the
+   prompt the first time the skill is needed):
+   - `update-config` — manage `~/.claude/settings.json`, hooks, env vars
+   - `keybindings-help` — keyboard shortcut customisation
+   - `simplify` — review changed code for reuse / quality
+   - `fewer-permission-prompts` — auto-allowlist common read-only Bash
+   - `loop` — run a prompt or slash command on an interval
+   - `schedule` — cron-style scheduled remote agents
+   - `claude-api` — for any Claude/Anthropic SDK work in `server/`
+   - `api-design-principles`, `auth-implementation-patterns`
+   - `brainstorming`, `writing-plans`, `executing-plans`,
+     `subagent-driven-development`, `dispatching-parallel-agents`
+   - `frontend-design`, `ui-ux-pro-max`, `impeccable`,
+     `responsive-design`, `web-design-guidelines`,
+     `tailwind-design-system`, `design-system-patterns`,
+     `ckm-design`, `ckm-banner-design`, `ckm-brand`,
+     `ckm-design-system`, `ckm-slides`, `ckm-ui-styling`,
+     `design-for-ai`
+   - `vercel-cli-with-tokens`, `deploy-to-vercel`,
+     `vercel-composition-patterns`, `vercel-react-best-practices`,
+     `vercel-react-native-skills`, `vercel-react-view-transitions`
+   - `nextjs-app-router-patterns`, `nodejs-backend-patterns`,
+     `fastapi-templates`, `react-state-management`
+   - `database-migration`, `postgresql-table-design`,
+     `prisma-database-setup`, `neon-postgres`,
+     `sql-optimization-patterns`
+   - `embedding-strategies`, `hybrid-search-implementation`,
+     `vector-index-tuning`, `rag-implementation`,
+     `langchain-architecture`, `llm-evaluation`,
+     `prompt-engineering-patterns`, `ml-pipeline-workflow`
+   - `microservices-patterns`
+   - `systematic-debugging`, `test-driven-development`,
+     `verification-before-completion`, `receiving-code-review`,
+     `requesting-code-review`, `using-git-worktrees`,
+     `finishing-a-development-branch`, `using-superpowers`,
+     `writing-skills`
+   - Built-in slash commands relied on: `/init`, `/review`,
+     `/security-review`, `/ultrareview`, `/loop`, `/fast`
+
+3. **API access for Claude features in this app** (separate from the
+   editor login — these power runtime AI features, not the build):
+   - **Gemini API key** (chatbot proxy) — see §C5 env block.
+   - **Optional Anthropic API key** if you swap the chatbot to Claude
+     (`server/Routes/chatbotRoutes.js` notes how).
+
+4. **Verify the install** on a new machine:
+   ```bash
+   claude --version
+   claude /skill list           # should print every skill above
+   ```
+   If a skill isn't listed, run `claude /skill install <name>`.
+
+5. **Repo-level config that Claude reads**:
+   - `~/.claude/settings.json` (per-user) — your global settings.
+   - This repo currently has no `.claude/settings.json` at the project
+     root. If you want project-scoped permissions or hooks, create
+     `.claude/settings.json` and commit it.
+
+Without these skills installed, the agent can still build and run the
+app, but advanced workflows (multi-agent reviews, planning mode, Vercel
+one-shot deploys, Gemini API caching, etc.) will fall back to plain
+text and you'll need to drive them manually.
+
 ### D1. AAR `flutter_local_notifications` desugaring error
 Already configured (`isCoreLibraryDesugaringEnabled = true`,
 `desugar_jdk_libs:2.1.4`). The error you saw was a stale Gradle cache.
