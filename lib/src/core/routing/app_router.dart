@@ -13,6 +13,15 @@ import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
 import '../../features/auth/presentation/otp_screen.dart';
 import '../../features/auth/presentation/splash_screen.dart';
+import '../../features/translator/presentation/text_to_sign_screen.dart';
+import '../../features/learning/presentation/quiz_screen.dart';
+import '../../features/shop/presentation/products_screen.dart';
+import '../../features/shop/presentation/product_detail_screen.dart';
+import '../../features/shop/presentation/cart_screen.dart';
+import '../../features/assistant/presentation/assistant_screen.dart';
+import '../../features/profile/presentation/accessibility_settings_screen.dart';
+import '../../features/profile/presentation/social_links_screen.dart';
+import '../../features/safety/presentation/contacts_screen.dart';
 import '../api/auth_provider.dart';
 
 /// Route path constants
@@ -23,12 +32,21 @@ abstract class AppRoute {
   static const otp = '/otp';
 
   static const home = '/home';
+  static const translator = '/translator';
+  static const textToSign = '/translator/text-to-sign';
   static const vision = '/vision';
   static const safety = '/safety';
   static const learning = '/learning';
+  static const quiz = '/learning/quiz';
   static const profile = '/profile';
   static const sos = '/sos';
   static const hardwarePairing = '/hardware-pairing';
+  static const shop = '/shop';
+  static const cart = '/shop/cart';
+  static const assistant = '/assistant';
+  static const accessibility = '/profile/accessibility';
+  static const social = '/profile/social';
+  static const contacts = '/profile/contacts';
 }
 
 /// Root navigator key – shared so modals can push above the shell.
@@ -159,6 +177,56 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         name: 'hardware-pairing',
         pageBuilder:
             (_, __) => const MaterialPage(child: HardwarePairingScreen()),
+      ),
+
+      // ── New feature routes ──────────────────────────────────────────────
+      GoRoute(
+        path: AppRoute.textToSign,
+        name: 'text-to-sign',
+        pageBuilder: (_, __) => const MaterialPage(child: TextToSignScreen()),
+      ),
+      GoRoute(
+        path: AppRoute.quiz,
+        name: 'quiz',
+        pageBuilder: (_, __) => const MaterialPage(child: QuizScreen()),
+      ),
+      GoRoute(
+        path: AppRoute.shop,
+        name: 'shop',
+        pageBuilder: (_, __) => const MaterialPage(child: ProductsScreen()),
+      ),
+      GoRoute(
+        path: '/shop/product/:id',
+        name: 'shop-product',
+        pageBuilder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          return MaterialPage(child: ProductDetailScreen(productId: id));
+        },
+      ),
+      GoRoute(
+        path: AppRoute.cart,
+        name: 'cart',
+        pageBuilder: (_, __) => const MaterialPage(child: CartScreen()),
+      ),
+      GoRoute(
+        path: AppRoute.assistant,
+        name: 'assistant',
+        pageBuilder: (_, __) => const MaterialPage(child: AssistantScreen()),
+      ),
+      GoRoute(
+        path: AppRoute.accessibility,
+        name: 'accessibility',
+        pageBuilder: (_, __) => const MaterialPage(child: AccessibilitySettingsScreen()),
+      ),
+      GoRoute(
+        path: AppRoute.social,
+        name: 'social',
+        pageBuilder: (_, __) => const MaterialPage(child: SocialLinksScreen()),
+      ),
+      GoRoute(
+        path: AppRoute.contacts,
+        name: 'contacts',
+        pageBuilder: (_, __) => const MaterialPage(child: ContactsScreen()),
       ),
     ],
   );

@@ -24,7 +24,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _isEditing = false;
   bool _isSaving = false;
   late TextEditingController _nameCtrl;
-  String _selectedDisability = 'hearing';
+  String _selectedDisability = 'deaf';
   final ImagePicker _picker = ImagePicker();
 
   @override
@@ -43,7 +43,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     setState(() {
       _isEditing = true;
       _nameCtrl.text = user?.name ?? '';
-      _selectedDisability = user?.disabilityType ?? 'hearing';
+      _selectedDisability = user?.disabilityType ?? 'deaf';
     });
   }
 
@@ -297,6 +297,51 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         teal: teal,
                         isDark: isDark,
                         onTap: () => context.push(AppRoute.hardwarePairing),
+                      ),
+                      const SizedBox(height: 8),
+                      _ActionRow(
+                        icon: Icons.accessibility_new_rounded,
+                        label: 'Accessibility',
+                        subtitle: 'TTS, contrast, dyslexia font, motor mode',
+                        teal: teal,
+                        isDark: isDark,
+                        onTap: () => context.push(AppRoute.accessibility),
+                      ),
+                      const SizedBox(height: 8),
+                      _ActionRow(
+                        icon: Icons.contacts_rounded,
+                        label: 'Emergency Contacts',
+                        subtitle: 'Manage SOS recipients',
+                        teal: teal,
+                        isDark: isDark,
+                        onTap: () => context.push(AppRoute.contacts),
+                      ),
+                      const SizedBox(height: 8),
+                      _ActionRow(
+                        icon: Icons.share_rounded,
+                        label: 'Social Links',
+                        subtitle: 'Instagram, Facebook, Twitter, TikTok…',
+                        teal: teal,
+                        isDark: isDark,
+                        onTap: () => context.push(AppRoute.social),
+                      ),
+                      const SizedBox(height: 8),
+                      _ActionRow(
+                        icon: Icons.shopping_bag_rounded,
+                        label: 'Shop',
+                        subtitle: 'Accessibility products',
+                        teal: teal,
+                        isDark: isDark,
+                        onTap: () => context.push(AppRoute.shop),
+                      ),
+                      const SizedBox(height: 8),
+                      _ActionRow(
+                        icon: Icons.smart_toy_rounded,
+                        label: 'Assistant',
+                        subtitle: 'Ask how to use Ishara',
+                        teal: teal,
+                        isDark: isDark,
+                        onTap: () => context.push(AppRoute.assistant),
                       ),
                     ],
                   ),
@@ -587,7 +632,7 @@ class _UserInfoDisplay extends ConsumerWidget {
         _InfoTile(
           icon: Icons.accessibility_new_rounded,
           label: s.disabilityType,
-          value: (user?.disabilityType ?? 'hearing').capitalize(),
+          value: (user?.disabilityType ?? 'deaf').capitalize(),
           isDark: isDark,
           teal: teal,
         ),
@@ -706,10 +751,9 @@ class _EditProfileForm extends ConsumerWidget {
   final VoidCallback onCancel;
 
   static const _disabilities = [
-    'hearing',
-    'vision',
-    'speech',
-    'mobility',
+    'deaf',
+    'blind',
+    'non-verbal',
     'other',
   ];
 

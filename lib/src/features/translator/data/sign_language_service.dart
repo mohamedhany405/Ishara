@@ -894,10 +894,12 @@ class SignLanguageService {
 
   List<int>? _readInputTensorShape() {
     try {
-      final shape = _interpreter?.getInputTensor(0).shape;
-      if (shape == null || shape.length < 3) {
-        return null;
-      }
+      final interp = _interpreter;
+      if (interp == null) return null;
+      final tensors = interp.getInputTensors();
+      if (tensors.isEmpty) return null;
+      final shape = tensors.first.shape;
+      if (shape.length < 3) return null;
       return shape;
     } catch (_) {
       return null;

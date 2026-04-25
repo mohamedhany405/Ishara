@@ -20,6 +20,7 @@ function buildUserResponse(req, user) {
         id: user._id,
         email: user.email,
         name: user.name,
+        phone: user.phone || "",
         role: user.role,
         isVerified: user.isVerified,
         profilePic: resolvePublicUrl(req, user.profilePic),
@@ -27,6 +28,8 @@ function buildUserResponse(req, user) {
         disabilityType: user.disabilityType,
         emergencyContacts: user.emergencyContacts,
         preferences: user.preferences,
+        socialLinks: user.socialLinks || {},
+        accessibilityPrefs: user.accessibilityPrefs || {},
     };
 }
 
@@ -36,6 +39,9 @@ function buildEmergencyContactResponse(contact) {
         name: contact.name,
         phone: contact.phone,
         relationship: contact.relationship,
+        app: contact.app || "all",
+        priority: contact.priority || 0,
+        telegramChatId: contact.telegramChatId || "",
     };
 }
 
@@ -43,12 +49,18 @@ const emergencyContactSchema = Joi.object({
     name: Joi.string().trim().min(2).max(100).required(),
     phone: Joi.string().trim().min(5).max(30).required(),
     relationship: Joi.string().trim().max(80).allow("").default(""),
+    app: Joi.string().valid("whatsapp", "telegram", "sms", "all").default("all"),
+    priority: Joi.number().integer().min(0).max(100).default(0),
+    telegramChatId: Joi.string().trim().max(80).allow("").default(""),
 });
 
 const emergencyContactUpdateSchema = Joi.object({
     name: Joi.string().trim().min(2).max(100),
     phone: Joi.string().trim().min(5).max(30),
     relationship: Joi.string().trim().max(80).allow(""),
+    app: Joi.string().valid("whatsapp", "telegram", "sms", "all"),
+    priority: Joi.number().integer().min(0).max(100),
+    telegramChatId: Joi.string().trim().max(80).allow(""),
 }).min(1);
 
 const uploadsDir = process.env.VERCEL

@@ -27,6 +27,12 @@ class Interpreter {
     return const Tensor();
   }
 
+  Tensor getInputTensor(int index) {
+    return const Tensor();
+  }
+
+  List<Tensor> getInputTensors() => const <Tensor>[];
+
   void run(Object input, Object output) {}
 
   void close() {}

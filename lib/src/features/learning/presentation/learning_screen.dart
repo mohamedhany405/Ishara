@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:video_player/video_player.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
@@ -51,6 +52,12 @@ class _LearningScreenState extends ConsumerState<LearningScreen>
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
+      floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'learning-quiz',
+        icon: const Icon(Icons.quiz_rounded),
+        label: const Text('Quiz'),
+        onPressed: () => GoRouter.of(context).push('/learning/quiz'),
+      ),
       body:
           state.isLoading
               ? IsharaLoadingState(message: '${s.learnTitle}...')

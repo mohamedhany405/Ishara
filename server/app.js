@@ -13,6 +13,15 @@ const authRoutes = require("./Routes/authRoutes");
 const contactRoutes = require("./Routes/contactRoutes");
 const learningRoutes = require("./Routes/learningRoutes");
 const historyRoutes = require("./Routes/historyRoutes");
+const productsRoutes = require("./Routes/productsRoutes");
+const reviewsRoutes = require("./Routes/reviewsRoutes");
+const cartRoutes = require("./Routes/cartRoutes");
+const ordersRoutes = require("./Routes/ordersRoutes");
+const sosRoutes = require("./Routes/sosRoutes");
+const chatbotRoutes = require("./Routes/chatbotRoutes");
+const socialRoutes = require("./Routes/socialRoutes");
+const accessibilityRoutes = require("./Routes/accessibilityRoutes");
+const quizRoutes = require("./Routes/quizRoutes");
 const connectDB = require("./config/dbConfig");
 
 const app = express();
@@ -86,6 +95,15 @@ app.use("/api/contact", contactRoutes);
 app.use("/api/users", profileRoutes);
 app.use("/api/learning", learningRoutes);
 app.use("/api/history", historyRoutes);
+app.use("/api/products", productsRoutes);
+app.use("/api/reviews", reviewsRoutes);
+app.use("/api/cart", cartRoutes);
+app.use("/api/orders", ordersRoutes);
+app.use("/api/sos", sosRoutes);
+app.use("/api/chatbot", chatbotRoutes);
+app.use("/api/social", socialRoutes);
+app.use("/api/accessibility", accessibilityRoutes);
+app.use("/api/quiz", quizRoutes);
 
 // Simple file upload route (kept for compatibility). In cloud mode, prefer Cloudinary.
 app.post("/api/upload", upload.single("file"), (req, res) => {

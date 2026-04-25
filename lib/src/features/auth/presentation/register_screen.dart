@@ -32,13 +32,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _obscure = true;
   String? _error;
   int _shakeKey = 0;
-  String _disability = 'hearing';
+  String _disability = 'deaf';
 
   static const _disabilityValues = [
-    ('hearing', Icons.hearing_rounded),
     ('deaf', Icons.hearing_disabled_rounded),
     ('blind', Icons.visibility_off_rounded),
     ('non-verbal', Icons.record_voice_over_rounded),
+    ('other', Icons.accessibility_new_rounded),
   ];
 
   @override
@@ -95,10 +95,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final orange = isDark ? IsharaColors.orangeDark : IsharaColors.orangeLight;
     final s = t(ref);
     final disabilityLabels = {
-      'hearing': s.hearing,
       'deaf': s.deaf,
       'blind': s.blind,
       'non-verbal': s.nonVerbal,
+      'other': 'Other',
     };
 
     return Scaffold(

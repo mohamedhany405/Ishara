@@ -41,10 +41,8 @@ const registerSchema = Joi.object({
             "string.empty": "Name is required.",
         }),
     disabilityType: Joi.string()
-        .valid("deaf", "non-verbal", "blind", "hearing")
-        // Keep this field required in the data model, but default it so older clients
-        // (or minimal forms) don't fail hard at registration.
-        .default("hearing")
+        .valid("deaf", "non-verbal", "blind", "other")
+        .default("deaf")
         .messages({
             "any.only": "Please choose a valid disability type.",
         }),

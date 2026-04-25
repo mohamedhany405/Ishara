@@ -1,6 +1,48 @@
 // models/User.js
 const mongoose = require("mongoose");
 
+const EmergencyContactSchema = new mongoose.Schema(
+    {
+        name: { type: String, required: true },
+        phone: { type: String, required: true },
+        relationship: { type: String, default: "" },
+        app: { type: String, enum: ["whatsapp", "telegram", "sms", "all"], default: "all" },
+        priority: { type: Number, default: 0 },
+        telegramChatId: { type: String, default: "" },
+    },
+    { _id: true, timestamps: false }
+);
+
+const SocialLinksSchema = new mongoose.Schema(
+    {
+        instagram: { type: String, default: "" },
+        facebook: { type: String, default: "" },
+        twitter: { type: String, default: "" },
+        tiktok: { type: String, default: "" },
+        whatsapp: { type: String, default: "" },
+        youtube: { type: String, default: "" },
+    },
+    { _id: false }
+);
+
+const AccessibilityPrefsSchema = new mongoose.Schema(
+    {
+        autoTts: { type: Boolean, default: false },
+        highContrast: { type: Boolean, default: false },
+        colorBlindMode: { type: String, enum: ["none", "deuter", "protan", "tritan"], default: "none" },
+        dyslexiaFont: { type: Boolean, default: false },
+        textScale: { type: Number, default: 1.0, min: 0.8, max: 2.2 },
+        motorMode: { type: Boolean, default: false },
+        reduceMotion: { type: Boolean, default: false },
+        hapticsOnEveryAction: { type: Boolean, default: false },
+        signLangPreferred: { type: Boolean, default: false },
+        vibrationLevel: { type: Number, default: 3, min: 0, max: 5 },
+        ttsVoice: { type: String, default: "default" },
+        ttsRate: { type: Number, default: 0.5, min: 0.2, max: 1.0 },
+    },
+    { _id: false }
+);
+
 const UserSchema = new mongoose.Schema(
     {
         // authentication
@@ -13,35 +55,42 @@ const UserSchema = new mongoose.Schema(
         resetPasswordToken: { type: String },
         resetPasswordExpiry: { type: Date },
 
-        // profile - FIX: Changed 'profilepic' to 'profilePic' (camelCase consistency)
+        // profile
         name: { type: String, required: true },
-        profilePic: { type: String, default: "" }, // Set dynamically in register handler via ui-avatars.com
+        profilePic: { type: String, default: "" },
         bio: { type: String, default: "" },
+        phone: { type: String, default: "" },
 
-        // Ishara-specific fields
+        // Ishara-specific — "hearing" removed per UX spec.
         disabilityType: {
             type: String,
-            enum: ["deaf", "non-verbal", "blind", "hearing"],
+            enum: ["deaf", "non-verbal", "blind", "other"],
             required: true,
-            default: "hearing",
+            default: "deaf",
         },
-        emergencyContacts: [
-            {
-                name: String,
-                phone: String,
-                relationship: String,
-            },
-        ],
+
+        emergencyContacts: { type: [EmergencyContactSchema], default: [] },
+
+        socialLinks: { type: SocialLinksSchema, default: () => ({}) },
+
+        accessibilityPrefs: { type: AccessibilityPrefsSchema, default: () => ({}) },
+
+        // Loose settings bucket for future-proofing
         preferences: {
             type: Map,
             of: mongoose.Schema.Types.Mixed,
-            default: () =>
-                new Map([
-                    ["vibrationLevel", 3],
-                    ["fontSize", "medium"],
-                    ["highContrast", false],
-                    ["ttsVoice", "default"],
-                ]),
+            default: () => new Map(),
+        },
+
+        // Shop
+        cart: {
+            type: [
+                {
+                    productId: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
+                    qty: { type: Number, default: 1, min: 1 },
+                },
+            ],
+            default: [],
         },
     },
     { timestamps: true }
@@ -50,7 +99,6 @@ const UserSchema = new mongoose.Schema(
 UserSchema.index({ role: 1, createdAt: -1 });
 UserSchema.index({ isVerified: 1, createdAt: -1 });
 
-// Prevent model overwrite error
 const User = mongoose.models.User || mongoose.model("User", UserSchema);
 
 module.exports = User;

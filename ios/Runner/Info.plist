@@ -47,5 +47,31 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Ishara uses the camera to detect sign language gestures and translate them to Arabic in real-time.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Ishara uses the microphone for voice-to-text and to receive audio from paired glasses.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Ishara attaches your location to SOS messages so emergency contacts can find you.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Ishara sends your location with SOS alerts, including from hardware glasses while the app is in the background.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Ishara sends your location with SOS alerts, including from hardware glasses while the app is in the background.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Ishara can import images to read text or identify currency and objects.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Ishara converts your speech to text for voice-driven communication.</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>whatsapp</string>
+		<string>tg</string>
+		<string>sms</string>
+		<string>mailto</string>
+		<string>tel</string>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>audio</string>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>

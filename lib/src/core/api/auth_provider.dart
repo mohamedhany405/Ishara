@@ -106,7 +106,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String email,
     required String password,
     required String name,
-    String disabilityType = 'hearing',
+    String disabilityType = 'deaf',
   }) async {
     return _authService.register(
       email: email,
